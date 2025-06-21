@@ -55,7 +55,51 @@ def run_parameter_fuzzing(target_base_path: str):
         console.print(f"  [magenta][{k}][/magenta] {v}")
     fuzz_type_choice = Prompt.ask("Enter choice", choices=fuzz_type_choices.keys(), default="1")
 
-    target_url = Prompt.ask("Enter the full target URL (e.g., https://example.com/page)")
+    # --- URL Suggestion Logic ---
+    suggested_urls = []
+    wayback_file_path = os.path.join(target_base_path, "recon", "wayback", "archive_urls_unique.txt")
+    selected_target_url_from_suggestion = None
+
+    if os.path.exists(wayback_file_path) and os.path.getsize(wayback_file_path) > 0:
+        try:
+            with open(wayback_file_path, 'r', encoding='utf-8', errors='ignore') as f_wayback:
+                urls_with_params = set() # Use a set to store unique URLs with params
+                for line in f_wayback:
+                    url = line.strip()
+                    if '?' in url and '=' in url: # Basic check for query parameters
+                        # Extract base URL + path + query string (without fragment)
+                        base_with_query = url.split('#')[0]
+                        urls_with_params.add(base_with_query)
+
+                suggested_urls = sorted(list(urls_with_params))[:20] # Limit to top 20 suggestions
+
+            if suggested_urls:
+                console.print("\n[bold green]Found URLs with parameters from Recon data (Wayback):[/bold green]")
+                for i, sug_url in enumerate(suggested_urls):
+                    console.print(f"  [magenta][{i+1}][/magenta] {sug_url}")
+                console.print(f"  [magenta][M][/magenta] Enter URL Manually")
+
+                url_choice_options = [str(i+1) for i in range(len(suggested_urls))] + ["M", "m"]
+                url_choice = Prompt.ask("Select a URL to fuzz or [M]anual entry", choices=url_choice_options, default="M")
+
+                if url_choice.upper() != "M":
+                    try:
+                        selected_target_url_from_suggestion = suggested_urls[int(url_choice)-1]
+                        console.print(f"Selected URL for fuzzing: [blue]{selected_target_url_from_suggestion}[/blue]")
+                    except (ValueError, IndexError):
+                        console.print("[yellow]Invalid selection, proceeding to manual URL entry.[/yellow]")
+                        selected_target_url_from_suggestion = None # Fallback to manual
+                else:
+                    selected_target_url_from_suggestion = None # Manual entry chosen
+        except Exception as e_wayback_read:
+            console.print(f"[yellow]Could not read or parse wayback URLs file: {e_wayback_read}. Proceeding with manual URL entry.[/yellow]")
+            selected_target_url_from_suggestion = None
+
+    if selected_target_url_from_suggestion:
+        target_url = selected_target_url_from_suggestion # Use the selected URL
+    else:
+        target_url = Prompt.ask("Enter the full target URL (e.g., https://example.com/page or https://example.com/search?q=test)")
+
     if not target_url:
         console.print("[red]Target URL cannot be empty. Skipping parameter fuzzing.[/red]")
         return

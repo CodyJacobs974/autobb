@@ -95,7 +95,10 @@ Automated scans: Whois, Nmap, Subdomain Enumeration (Amass, Sublist3r, Subfinder
 Guidance & tool integration: BAC (ffuf for IDORs), SQLi (sqlmap), XSS (dalfox), Command Injection, SSRF, SSTI, Open Redirect, Insecure Deserialization, File Uploads, Security Misconfigs (Nikto, Nuclei, header checks).
 
 ### 3. Fuzzing & Automation
-Parameter Fuzzing (ffuf for GET/POST/Headers), Header Fuzzing guidance, Burp Suite integration guidance.
+Tools and guidance for discovering vulnerabilities through fuzzing:
+*   **Parameter Fuzzing:** Uses `ffuf` for GET parameters, POST data, and HTTP Headers. Can **suggest URLs with parameters found during reconnaissance** (from Wayback scan) for easier targeting. (Output: `fuzzing/ffuf_parameter_fuzz/`)
+*   **HTTP Header Fuzzing Guidance:** Detailed advice on which headers to fuzz and what to look for, directing users to the `ffuf` parameter fuzzing option (Header type) for automation.
+*   **Burp Suite Integration Guidance:** Advice on how to effectively use Burp Suite in conjunction with AutoBB's workflow.
 
 ### 4. Exploitation
 SearchSploit integration, PoC building guidance, exploitation tools guidance, evidence capture guidance.
