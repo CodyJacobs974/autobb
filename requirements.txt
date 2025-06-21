@@ -1,4 +1,4 @@
 rich
+requests
 # Add other Python dependencies as they are identified, e.g.:
 # python-nmap (if we use a python wrapper for nmap)
-# requests (for interacting with web services if needed directly in Python)
