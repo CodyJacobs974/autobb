@@ -104,13 +104,52 @@ def run_parameter_fuzzing(target_base_path: str):
         console.print("[red]Target URL cannot be empty. Skipping parameter fuzzing.[/red]")
         return
 
-    payload_wordlist = Prompt.ask("Enter path to payload wordlist (e.g., /usr/share/seclists/Fuzzing/LFI-Jhaddix.txt)")
-    if not payload_wordlist or not os.path.exists(payload_wordlist):
-        console.print(f"[red]Payload wordlist not found at '{payload_wordlist}'. Skipping.[/red]")
+    # --- Payload Type and Wordlist Selection ---
+    console.print("\n[bold]Payload Type Selection for Fuzzing:[/bold]")
+    payload_categories = {
+        "1": "Generic (Default/Broad)",
+        "2": "XSS (Cross-Site Scripting)",
+        "3": "SQLi (SQL Injection)",
+        "4": "LFI (Local File Inclusion)",
+        "5": "CMDi (Command Injection)",
+        "6": "Custom (Specify wordlist directly)"
+    }
+    for k, v in payload_categories.items():
+        console.print(f"  [magenta][{k}][/magenta] {v}")
+    payload_type_choice_key = Prompt.ask("Select payload category for wordlist suggestion", choices=payload_categories.keys(), default="1")
+
+    selected_payload_category_name = payload_categories[payload_type_choice_key].split(" ")[0].lower() # e.g., "generic", "xss"
+    if payload_type_choice_key == "6": # Custom
+        selected_payload_category_name = "custom" # Will just prompt for path without specific suggestion
+
+    effective_default_fuzz_wl = None
+    specific_wl_key = f"wordlists.parameter_fuzzing_{selected_payload_category_name}"
+    generic_wl_key = "wordlists.parameter_fuzzing_generic"
+
+    if selected_payload_category_name != "custom":
+        specific_wl_path_config = get_config_value(specific_wl_key)
+        if specific_wl_path_config and os.path.exists(os.path.expanduser(specific_wl_path_config)):
+            effective_default_fuzz_wl = os.path.expanduser(specific_wl_path_config)
+            console.print(f"[dim]Using configured wordlist for '{selected_payload_category_name}': {effective_default_fuzz_wl}[/dim]")
+
+    if not effective_default_fuzz_wl and selected_payload_category_name != "custom": # If specific not found/valid, try generic
+        generic_wl_path_config = get_config_value(generic_wl_key)
+        if generic_wl_path_config and os.path.exists(os.path.expanduser(generic_wl_path_config)):
+            effective_default_fuzz_wl = os.path.expanduser(generic_wl_path_config)
+            console.print(f"[dim]Specific wordlist for '{selected_payload_category_name}' not found/configured. Using generic fuzzing wordlist: {effective_default_fuzz_wl}[/dim]")
+
+    payload_wordlist_str = Prompt.ask(
+        f"Enter path to payload wordlist for '{selected_payload_category_name.upper()}' fuzzing",
+        default=effective_default_fuzz_wl
+    )
+    if not payload_wordlist_str or not os.path.exists(os.path.expanduser(payload_wordlist_str)):
+        console.print(f"[red]Payload wordlist not found at '{payload_wordlist_str}'. Skipping.[/red]")
         return
+    payload_wordlist = os.path.expanduser(payload_wordlist_str)
+    # --- End of Payload Type and Wordlist Selection ---
 
     ffuf_command = ["ffuf", "-w", f"{payload_wordlist}:FUZZ"]
-    fuzz_description = ""
+    fuzz_description = selected_payload_category_name # Use category for filename
 
     if fuzz_type_choice == "1": # GET Parameter
         get_param_url = Prompt.ask(

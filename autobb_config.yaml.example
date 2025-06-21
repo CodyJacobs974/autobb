@@ -41,12 +41,15 @@
 #   # For Vulnerability Analysis -> Broken Access Control (IDOR Fuzzing with ffuf)
 #   idor_numeric_ids: ~/wordlists/custom_lists/numeric_1-10000.txt
 #
-#   # For Fuzzing & Automation -> Parameter Fuzzing (Generic Payloads)
-#   parameter_fuzzing_generic: ~/SecLists/Fuzzing/general-payloads.txt
-#   # You might want more specific lists for different parameter fuzzing scenarios:
-#   # xss_payloads: ~/SecLists/Fuzzing/XSS/XSS-Jhaddix-Short.txt
-#   # sqli_payloads: ~/SecLists/Fuzzing/SQLi/Generic-SQLi.txt
-#   # lfi_payloads: ~/SecLists/Fuzzing/LFI/LFI-Jhaddix.txt
+#   # For Fuzzing & Automation -> Parameter Fuzzing
+#   # Generic fallback payload list for parameter fuzzing
+#   parameter_fuzzing_generic: ~/SecLists/Fuzzing/Polyglots/Payloads_from_all_files.txt
+#   # Specific payload lists for different attack types during parameter fuzzing:
+#   parameter_fuzzing_xss: ~/SecLists/Fuzzing/XSS/XSS-Polyglots-XSSHunter.txt
+#   parameter_fuzzing_sqli: ~/SecLists/Fuzzing/SQLi/Generic-SQLi.txt
+#   parameter_fuzzing_lfi: ~/SecLists/Fuzzing/LFI/LFI-gracefulsecurity-linux.txt
+#   # Using a common command injection list, but often needs tailoring
+#   parameter_fuzzing_cmdi: ~/SecLists/Fuzzing/Command_Injection/command-injection-commix.txt
 
 # Default options for tools (This is an idea for future enhancement; AutoBB does not yet automatically apply these global options)
 # Example:

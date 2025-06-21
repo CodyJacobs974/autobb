@@ -74,7 +74,7 @@ AutoBB supports a global YAML configuration file to customize default wordlist p
     *   `tool_paths`: Specify absolute paths (or using `~`) to tools like `nmap`, `sqlmap`, etc.
     *   `wordlists`: Define default paths for wordlists used by modules like directory brute-forcing or parameter fuzzing (e.g., `wordlists.directory_bruteforce`).
 
-    Refer to the comments within `autobb_config.yaml.example` for details on available keys and structure. If the config file is not found or a specific key is missing, AutoBB will use its default behavior (e.g., search PATH for tools, prompt for wordlists without a default).
+    Refer to the comments within `autobb_config.yaml.example` for details on available keys and structure (e.g., `tool_paths.nmap`, `wordlists.directory_bruteforce`, `wordlists.parameter_fuzzing_xss`). If the config file is not found or a specific key is missing, AutoBB will use its default behavior.
 
 ## Core Features
 
