@@ -119,8 +119,20 @@ Guidance and tools to help confirm and demonstrate vulnerabilities:
 ### 5. Generate Bug Bounty Summary Report
 Creates a text-based summary report (`summary.txt`) from collected findings. Includes:
 *   Target & Scope Information.
-*   Detailed Reconnaissance Findings.
-*   Summaries and pointers to Vulnerability Analysis tool outputs.
+*   Detailed Reconnaissance Findings:
+    *   Whois: Snippet of results.
+    *   Nmap: Lists scan files and **parses XML output to show open ports, services, and versions.**
+    *   Subdomain Enumeration: Count of unique subdomains and lists raw tool output files.
+    *   Directory Brute-force: Lists output files from Gobuster/Dirsearch and **summarizes top interesting paths found (e.g., status 200, 30x, 401, 403, 500).**
+    *   Wayback/Archive Scan: Count of unique URLs and lists raw tool output files.
+    *   HTTP Probe: Count of live hosts.
+    *   Technology Stack Scan: Lists WhatWeb JSON/text files and **parses JSON to summarize identified technologies, versions, and other details.**
+*   Summaries and pointers to Vulnerability Analysis tool outputs:
+    *   SQLMap: Points to session directory and **summarizes potential findings from logs.**
+    *   Dalfox: Points to output file and **indicates if `[VULN]` or `[POC]` tags were found.**
+    *   Nikto/Nuclei: Lists output files. **Nuclei JSONL is parsed for a summary of findings by severity.**
+    *   Headers Analysis: Lists output file and **summarizes key missing/suboptimal headers.**
+    *   Guidance-based checks are noted, directing users to manual notes.
 
 ### 6. View Notes
 Allows users to create and view target-specific notes in `notes/user_notes.md` using a terminal editor (`nano`, `vim`, `vi`).

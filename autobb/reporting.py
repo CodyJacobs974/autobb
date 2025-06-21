@@ -68,23 +68,84 @@ def generate_report(target_base_path: str):
         report_content += "- No Whois data found.\n"
     report_content += "\n"
 
+import xml.etree.ElementTree as ET # For Nmap XML parsing
+
+console = Console()
+# ... (rest of the file up to Nmap section) ...
+
     # Nmap Scans
     report_content += "### Nmap Scans:\n"
     nmap_dir = os.path.join(recon_base_dir, "nmap")
     if os.path.isdir(nmap_dir) and any(os.scandir(nmap_dir)):
-        nmap_files = [f for f in os.listdir(nmap_dir) if f.startswith("nmap_results_") and (f.endswith(".txt") or f.endswith(".xml"))]
-        if nmap_files:
-            for nf in sorted(list(set(f.split('.')[0] for f in nmap_files))): # Get unique base names
-                report_content += f"- Scan results for '{nf}':\n"
-                if os.path.exists(os.path.join(nmap_dir, f"{nf}.txt")):
-                    report_content += f"  - Text output: recon/nmap/{nf}.txt\n"
-                if os.path.exists(os.path.join(nmap_dir, f"{nf}.xml")):
-                    report_content += f"  - XML output: recon/nmap/{nf}.xml\n"
-                # TODO: Light parsing of XML/text for open ports summary
+        nmap_file_basenames = sorted(list(set(
+            f.split('.')[0] for f in os.listdir(nmap_dir)
+            if f.startswith("nmap_results_") and (f.endswith(".txt") or f.endswith(".xml"))
+        )))
+
+        if nmap_file_basenames:
+            for basename in nmap_file_basenames:
+                report_content += f"- Scan results for '{basename}':\n"
+                text_file_path = os.path.join(nmap_dir, f"{basename}.txt")
+                xml_file_path = os.path.join(nmap_dir, f"{basename}.xml")
+
+                if os.path.exists(text_file_path):
+                    report_content += f"  - Text output: recon/nmap/{basename}.txt\n"
+                if os.path.exists(xml_file_path):
+                    report_content += f"  - XML output: recon/nmap/{basename}.xml\n"
+                    # Attempt to parse XML for open ports
+                    try:
+                        tree = ET.parse(xml_file_path)
+                        root = tree.getroot()
+                        parsed_hosts_info = []
+
+                        for host_node in root.findall('host'):
+                            host_ip = "N/A"
+                            address_node = host_node.find('address[@addrtype="ipv4"]')
+                            if address_node is not None:
+                                host_ip = address_node.get('addr')
+                            else: # Fallback to hostname if IP not found or other addrtypes
+                                hostnames_node = host_node.find('hostnames')
+                                if hostnames_node is not None:
+                                    hostname_node = hostnames_node.find('hostname')
+                                    if hostname_node is not None:
+                                        host_ip = hostname_node.get('name', "N/A")
+
+                            open_ports_for_host = []
+                            ports_node = host_node.find('ports')
+                            if ports_node is not None:
+                                for port_node in ports_node.findall('port'):
+                                    state_node = port_node.find('state')
+                                    if state_node is not None and state_node.get('state') == 'open':
+                                        portid = port_node.get('portid')
+                                        protocol = port_node.get('protocol')
+                                        service_info_str = ""
+                                        service_node = port_node.find('service')
+                                        if service_node is not None:
+                                            name = service_node.get('name', '')
+                                            product = service_node.get('product', '')
+                                            version = service_node.get('version', '')
+                                            service_info_str = name
+                                            if product: service_info_str += f" ({product}"
+                                            if version: service_info_str += f" {version}"
+                                            if product: service_info_str += ")"
+
+                                        open_ports_for_host.append(f"    - Port {portid}/{protocol}: open - {service_info_str if service_info_str else 'unknown service'}")
+
+                            if open_ports_for_host:
+                                parsed_hosts_info.append(f"  - Host: {host_ip}\n" + "\n".join(open_ports_for_host))
+
+                        if parsed_hosts_info:
+                            report_content += "  - Identified Open Ports (from XML):\n" + "\n".join(parsed_hosts_info) + "\n"
+                        else:
+                            report_content += "  - No open ports found or detailed in XML for this scan.\n"
+                    except ET.ParseError:
+                        report_content += "  - Could not parse Nmap XML data (malformed file?).\n"
+                    except Exception as e_xml:
+                        report_content += f"  - Error parsing Nmap XML: {str(e_xml)[:100]}\n" # Avoid overly long error messages
         else:
             report_content += "- No Nmap result files found in recon/nmap/.\n"
     else:
-        report_content += "- Nmap scans not run or no results found.\n"
+        report_content += "- Nmap scans not run or no results directory found.\n"
     report_content += "\n"
 
     # Subdomain Enumeration
@@ -111,21 +172,84 @@ def generate_report(target_base_path: str):
 
     # Directory Brute-force
     report_content += "### Directory Brute-force:\n"
-    gobuster_dir = os.path.join(recon_base_dir, "gobuster")
-    dirsearch_dir = os.path.join(recon_base_dir, "dirsearch")
-    dir_results_found = False
-    if os.path.isdir(gobuster_dir) and any(os.scandir(gobuster_dir)):
-        report_content += "- Gobuster results:\n"
-        for f_name in os.listdir(gobuster_dir):
-            report_content += f"  - recon/gobuster/{f_name}\n"
-        dir_results_found = True
-    if os.path.isdir(dirsearch_dir) and any(os.scandir(dirsearch_dir)):
-        report_content += "- Dirsearch results:\n"
-        for f_name in os.listdir(dirsearch_dir):
-            report_content += f"  - recon/dirsearch/{f_name}\n"
-        dir_results_found = True
-    if not dir_results_found:
-        report_content += "- No directory brute-force results found.\n"
+    gobuster_dir_path = os.path.join(recon_base_dir, "gobuster")
+    dirsearch_dir_path = os.path.join(recon_base_dir, "dirsearch")
+    found_any_dir_results = False
+
+    interesting_status_codes = [200, 204, 301, 302, 307, 401, 403, 500] # Codes to highlight
+
+    def parse_dir_output(file_path, tool_name):
+        """Helper to parse gobuster or dirsearch text output."""
+        found_paths = []
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"): # Skip empty lines or comments (dirsearch)
+                        continue
+
+                    path = ""
+                    status = 0
+
+                    if tool_name == "gobuster":
+                        # Gobuster format: /path (Status: XXX) [Size: YYY] or /path (Status: XXX)
+                        match = re.search(r"^(.+?)\s+\(Status:\s*(\d+)\)", line)
+                        if match:
+                            path = match.group(1).strip()
+                            try:
+                                status = int(match.group(2))
+                            except ValueError:
+                                continue # Skip if status is not an int
+                    elif tool_name == "dirsearch":
+                        # Dirsearch format: [HH:MM:SS] XXX - YYYB - /path
+                        match = re.match(r"\[\d{2}:\d{2}:\d{2}\]\s+(\d+)\s+-\s+[\w\.]+\s+-\s+(.+)", line)
+                        if match:
+                            try:
+                                status = int(match.group(1))
+                                path = match.group(2).strip()
+                            except ValueError:
+                                continue
+
+                    if path and status in interesting_status_codes:
+                        found_paths.append(f"    - Path: {path} (Status: {status})")
+            return found_paths
+        except Exception: # Broad catch for file reading/parsing issues
+            return ["    - Error parsing output file."]
+
+    if os.path.isdir(gobuster_dir_path) and any(os.scandir(gobuster_dir_path)):
+        report_content += "- Gobuster Results:\n"
+        found_any_dir_results = True
+        for f_name in sorted(os.listdir(gobuster_dir_path)):
+            if f_name.startswith("gobuster_results_") and f_name.endswith(".txt"):
+                report_content += f"  - File: recon/gobuster/{f_name}\n"
+                parsed_paths = parse_dir_output(os.path.join(gobuster_dir_path, f_name), "gobuster")
+                if parsed_paths:
+                    report_content += "\n".join(parsed_paths[:20]) # Show top 20
+                    if len(parsed_paths) > 20:
+                        report_content += "\n    - ...and more (see full file)."
+                    report_content += "\n"
+                else:
+                    report_content += "    - No interesting paths (200,30x,401,403,500) found in this file or parse error.\n"
+        report_content += "\n"
+
+    if os.path.isdir(dirsearch_dir_path) and any(os.scandir(dirsearch_dir_path)):
+        report_content += "- Dirsearch Results:\n"
+        found_any_dir_results = True
+        for f_name in sorted(os.listdir(dirsearch_dir_path)):
+            if f_name.startswith("dirsearch_results_") and f_name.endswith(".txt"):
+                report_content += f"  - File: recon/dirsearch/{f_name}\n"
+                parsed_paths = parse_dir_output(os.path.join(dirsearch_dir_path, f_name), "dirsearch")
+                if parsed_paths:
+                    report_content += "\n".join(parsed_paths[:20]) # Show top 20
+                    if len(parsed_paths) > 20:
+                        report_content += "\n    - ...and more (see full file)."
+                    report_content += "\n"
+                else:
+                    report_content += "    - No interesting paths (200,30x,401,403,500) found in this file or parse error.\n"
+        report_content += "\n"
+
+    if not found_any_dir_results:
+        report_content += "- No directory brute-force results found (Gobuster or Dirsearch).\n"
     report_content += "\n"
 
     # Wayback/Archive Scan
@@ -162,15 +286,112 @@ def generate_report(target_base_path: str):
     # Technology Stack Scan
     report_content += "### Technology Stack (WhatWeb):\n"
     whatweb_dir = os.path.join(recon_base_dir, "whatweb")
-    whatweb_results_found = False
     if os.path.isdir(whatweb_dir) and any(os.scandir(whatweb_dir)):
-        report_content += "- WhatWeb scan results:\n"
-        for f_name in os.listdir(whatweb_dir):
-            if f_name.endswith(".json") or f_name.endswith(".txt"):
-                 report_content += f"  - recon/whatweb/{f_name}\n"
-        whatweb_results_found = True
-    if not whatweb_results_found:
-        report_content += "- No WhatWeb scan results found.\n"
+        found_whatweb_files = False
+        for f_name in sorted(os.listdir(whatweb_dir)):
+            if f_name.startswith("whatweb_") and f_name.endswith(".json"):
+                found_whatweb_files = True
+                report_content += f"- WhatWeb JSON output: recon/whatweb/{f_name}\n"
+                json_file_path = os.path.join(whatweb_dir, f_name)
+                try:
+                    with open(json_file_path, 'r', encoding='utf-8') as f_json:
+                        # WhatWeb JSON output is an array of objects, one per plugin match.
+                        # For multiple targets in one JSON file (not current use case but robust for future):
+                        # data = json.load(f_json) # if it's a single JSON object/array for multiple targets
+                        # For --log-json, it's one JSON object per target URL, but might be an array if target has multiple IPs/redirects.
+                        # Let's assume it's typically a list of lists/dictionaries or a single dictionary for one target.
+                        # The first element in the outer list usually contains the target URI.
+                        # Each plugin match is an object with plugin name and results.
+
+                        # Reading the file content first
+                        content = f_json.read()
+                        if not content.strip():
+                            report_content += "  - JSON file is empty.\n"
+                            continue
+
+                        # WhatWeb --log-json can output multiple JSON objects if it follows redirects or has multiple IPs.
+                        # It's not a single valid JSON array but a stream of JSON objects.
+                        # Or, it can be a single JSON object which is an array of two items: [target_info, plugins_dict]
+                        # Let's try to handle both simple list of plugins and the two-item array structure.
+
+                        parsed_data = None
+                        try: # Try parsing as a single JSON object/array first
+                            parsed_data = json.loads(content)
+                        except json.JSONDecodeError: # If that fails, it might be a stream of JSON objects (not standard)
+                                                     # For now, we'll assume the --log-json is one object for the target.
+                            report_content += "  - Could not parse WhatWeb JSON as a single object. File might contain multiple JSON objects or be malformed.\n"
+                            # If it were a stream, we'd do:
+                            # for line in content.splitlines(): try: obj = json.loads(line) ... catch ...
+                            # But WhatWeb's --log-json for a single target is usually one JSON structure.
+                            # If it's the "stdout fallback" text, this will also fail here.
+                            if "--- FALLBACK: STDOUT ---" in content:
+                                report_content += "  - This file contains fallback text output, not parseable JSON.\n"
+                            continue
+
+
+                        technologies = {} # plugin_name: [versions_or_strings]
+
+                        # WhatWeb JSON structure: often a list like [target_info_dict, plugins_dict]
+                        # target_info_dict: {"target":"http://target.com", "http_status":200, ...}
+                        # plugins_dict: {"PluginName": {"version":["1.2"], "string":["details"]}, ...}
+
+                        data_to_parse = None
+                        if isinstance(parsed_data, list) and len(parsed_data) == 2 and isinstance(parsed_data[0], dict) and isinstance(parsed_data[1], dict):
+                            # This is the common structure for a single target scan
+                            target_scanned = parsed_data[0].get("target", f_name)
+                            plugins_dict = parsed_data[1]
+                            report_content += f"  - Technologies for Target: {target_scanned}\n"
+                            data_to_parse = plugins_dict
+                        elif isinstance(parsed_data, dict): # If it's just the plugins_dict directly (less common for --log-json)
+                            report_content += f"  - Technologies for Target: {f_name}\n" # Use filename as placeholder
+                            data_to_parse = parsed_data
+
+                        if data_to_parse:
+                            for plugin_name, plugin_data in data_to_parse.items():
+                                tech_details = []
+                                if "version" in plugin_data and plugin_data["version"]:
+                                    tech_details.append(f"Version(s): {', '.join(map(str, plugin_data['version']))}")
+                                if "string" in plugin_data and plugin_data["string"]:
+                                    tech_details.append(f"Details: {', '.join(map(str, plugin_data['string']))}")
+                                if "os" in plugin_data and plugin_data["os"]:
+                                     tech_details.append(f"OS: {', '.join(map(str, plugin_data['os']))}")
+                                if "account" in plugin_data and plugin_data["account"]: # e.g. Google-Analytics account
+                                     tech_details.append(f"Account: {', '.join(map(str, plugin_data['account']))}")
+
+                                if tech_details:
+                                    report_content += f"    - {plugin_name}: {'; '.join(tech_details)}\n"
+                                else:
+                                    report_content += f"    - {plugin_name} (No specific version/details in JSON)\n"
+                        elif not ("--- FALLBACK: STDOUT ---" in content): # Avoid double message if already handled
+                            report_content += "  - Could not determine technology structure in WhatWeb JSON.\n"
+
+                except json.JSONDecodeError:
+                    report_content += f"  - Error decoding WhatWeb JSON from {f_name}. File might be corrupted or not valid JSON.\n"
+                    # Check if it's the fallback text
+                    try:
+                        with open(json_file_path, 'r', encoding='utf-8') as f_check_fallback:
+                            fallback_content_check = f_check_fallback.read(100) # Read first 100 chars
+                        if "--- FALLBACK: STDOUT ---" in fallback_content_check:
+                             report_content += "    (File contains fallback text output from WhatWeb.)\n"
+                    except:
+                        pass # Ignore error during fallback check
+                except Exception as e_whatweb_parse:
+                    report_content += f"  - Error parsing WhatWeb JSON {f_name}: {str(e_whatweb_parse)[:100]}\n"
+
+            # Also list the .txt summary files
+            txt_files = [f for f in os.listdir(whatweb_dir) if f.startswith("whatweb_") and f.endswith(".txt")]
+            if txt_files:
+                report_content += "- WhatWeb text summaries:\n"
+                for txt_f in txt_files:
+                    report_content += f"  - recon/whatweb/{txt_f}\n"
+
+            if not found_whatweb_files and not txt_files: # If neither JSON nor TXT files were found
+                report_content += "- No WhatWeb output files found in recon/whatweb/.\n"
+
+        if not found_whatweb_files: # This message is a bit redundant if txt_files were found and listed
+             report_content += "- No WhatWeb JSON files found for parsing. Check for .txt summaries or if scan ran.\n"
+    else:
+        report_content += "- WhatWeb scan not run or no results directory found.\n"
     report_content += "\n"
 
     # 3. Vulnerability Findings
@@ -268,17 +489,61 @@ def generate_report(target_base_path: str):
                 for f_name in os.listdir(nuclei_out_dir):
                     report_content += f"  - vulnerabilities/security_misconfigurations/nuclei/{f_name}\n"
                 found_sec_misc_data = True
+import json # For Nuclei JSONL parsing
+
+# ... (other imports like ET, os, Console)
+
+# ... (generate_report function up to Security Misconfigurations)
             # Headers Analysis
             headers_out_dir = os.path.join(sec_misc_dir, "headers_analysis")
             if os.path.isdir(headers_out_dir) and any(os.scandir(headers_out_dir)):
                 report_content += "- Security Headers Analysis:\n"
                 for f_name in os.listdir(headers_out_dir):
-                    report_content += f"  - vulnerabilities/security_misconfigurations/headers_analysis/{f_name}\n"
-                    # TODO: Could add summary of missing headers here by parsing the file.
+                    if f_name.startswith("headers_") and f_name.endswith(".txt"):
+                        report_content += f"  - vulnerabilities/security_misconfigurations/headers_analysis/{f_name}\n"
+                        # Light parsing for missing headers summary
+                        try:
+                            with open(os.path.join(headers_out_dir, f_name), 'r', errors='ignore') as hf:
+                                missing_headers_summary = []
+                                for line in hf:
+                                    if "[ Missing ]" in line:
+                                        missing_header_name = line.split("]")[1].split("(")[0].strip()
+                                        missing_headers_summary.append(missing_header_name)
+                                if missing_headers_summary:
+                                    report_content += f"    - Key Missing/Suboptimal Headers Noted: {', '.join(missing_headers_summary)}\n"
+                        except Exception:
+                            report_content += "    - (Could not quickly parse header file for summary)\n"
                 found_sec_misc_data = True
 
-        if not found_sec_misc_data:
-            report_content += "- No automated security misconfiguration scan results (Nikto, Nuclei, Headers) found.\n"
+            # Nuclei JSONL Parsing
+            nuclei_jsonl_file = os.path.join(nuclei_out_dir if os.path.isdir(nuclei_out_dir) else "", "nuclei_results.jsonl") # Check if nuclei_out_dir was created
+            if os.path.exists(nuclei_jsonl_file):
+                report_content += "- Nuclei JSONL Output Parsed Summary:\n"
+                found_nuclei_issues = {} # severity: count
+                try:
+                    with open(nuclei_jsonl_file, 'r', errors='ignore') as f_jsonl:
+                        for line in f_jsonl:
+                            try:
+                                finding = json.loads(line)
+                                severity = finding.get("info", {}).get("severity", "unknown").lower()
+                                found_nuclei_issues[severity] = found_nuclei_issues.get(severity, 0) + 1
+                            except json.JSONDecodeError:
+                                continue # Skip malformed lines
+                    if found_nuclei_issues:
+                        for severity, count in sorted(found_nuclei_issues.items(), key=lambda item: ["critical", "high", "medium", "low", "info", "unknown"].index(item[0])):
+                            report_content += f"  - Severity '{severity.capitalize()}': {count} finding(s)\n"
+                        report_content += f"  - Full JSONL details: vulnerabilities/security_misconfigurations/nuclei/nuclei_results.jsonl\n"
+                    else:
+                        report_content += "  - No specific findings parsed from JSONL, or file was empty.\n"
+                except Exception as e_nuclei_parse:
+                    report_content += f"  - Error parsing Nuclei JSONL: {str(e_nuclei_parse)[:100]}\n"
+            elif os.path.isdir(nuclei_out_dir) and any(f.endswith(".txt") for f in os.listdir(nuclei_out_dir)): # If only text file exists
+                 report_content += "- Nuclei text output found (JSONL not available for parsing). Review manually.\n"
+
+
+        if not found_sec_misc_data and not (os.path.exists(nuclei_jsonl_file) and found_nuclei_issues): # Adjusted condition
+            report_content += "- No automated security misconfiguration scan results (Nikto, Nuclei, Headers) found or parsed.\n"
+
         report_content += "- Reminder: Review manual testing guidance for other misconfigurations.\n\n"
 
         # Guidance-Only Vulnerabilities

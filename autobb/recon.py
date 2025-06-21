@@ -440,9 +440,14 @@ def run_tech_scan(target_base_path: str):
         output_text_file = os.path.join(whatweb_output_dir, f"whatweb_{sanitized_target_name}.txt")
 
 
-        # Command: whatweb --log-json <file> <target>
-        # Adding --color=never and --no-errors to make stdout cleaner for saving.
-        whatweb_command = ["whatweb", "--log-json", output_json_file, "--color=never", "--no-errors", target_url]
+        # Command: whatweb --log-json <file.json> <target>
+        # We will also capture stdout for a simple text log.
+        # WhatWeb's --log-object / --log-brief / --log-xml / --log-json-verbose are other options.
+        # --log-json is a good balance for parseable structured data.
+
+        whatweb_command = ["whatweb", "--log-json", output_json_file, target_url]
+        # Add --color=never, --no-errors for cleaner stdout if we decide to save it more formally.
+        # For now, stdout is just for console display.
 
         console.print(f"Running: [dim]{' '.join(whatweb_command)}[/dim]")
 
@@ -451,29 +456,37 @@ def run_tech_scan(target_base_path: str):
                 whatweb_command,
                 capture_output=True,
                 text=True,
-                check=False, # WhatWeb can exit non-zero if site is unreachable or for other reasons
-                timeout=300 # 5 minute timeout per target
+                check=False,
+                timeout=300
             )
 
-            # Save stdout (verbose text output)
+            # WhatWeb with --log-json outputs JSON to the specified file.
+            # Its stdout will contain a human-readable summary.
             if process.stdout:
-                with open(output_text_file, "w") as f_text:
-                    f_text.write(f"WhatWeb results for: {target_url}\n")
+                with open(output_text_file, "w", encoding="utf-8") as f_text:
+                    f_text.write(f"WhatWeb text summary for: {target_url}\n")
                     f_text.write("="*30 + "\n")
-                    f_text.write(process.stdout)
-                console.print(f"[green]WhatWeb text output saved to: {output_text_file}[/green]")
+                    f_text.write(process.stdout) # Save human-readable summary
+                console.print(f"[green]WhatWeb text summary saved to: {output_text_file}[/green]")
             else:
-                console.print(f"[yellow]No text output (stdout) from WhatWeb for {target_url}.[/yellow]")
+                console.print(f"[yellow]No text summary (stdout) from WhatWeb for {target_url}.[/yellow]")
 
-            # Check JSON output file
+            # Verify JSON output file creation from --log-json
             if os.path.exists(output_json_file) and os.path.getsize(output_json_file) > 0:
-                console.print(f"[green]WhatWeb JSON results saved to: {output_json_file}[/green]")
+                console.print(f"[green]WhatWeb JSON data saved to: {output_json_file}[/green]")
             else:
+                # This case means --log-json might have failed or produced empty output.
                 console.print(f"[yellow]WhatWeb JSON output file not found or empty for {target_url} at {output_json_file}.[/yellow]")
-                # If JSON failed, but we got stdout, that's something.
-                # If stdout also empty, then it's more likely a problem.
+                # Try to write stdout to the JSON file's intended path if JSON failed but stdout has content,
+                # though this isn't ideal as it won't be JSON.
+                if process.stdout and not os.path.exists(output_json_file): # only if json file truly missing
+                    console.print(f"[dim]Saving stdout to {output_json_file} as a fallback text log.[/dim]")
+                    with open(output_json_file, "w", encoding="utf-8") as f_json_fallback:
+                         f_json_fallback.write("--- FALLBACK: STDOUT (JSON generation failed) ---\n")
+                         f_json_fallback.write(process.stdout)
 
-            if process.stderr: # Whatweb can be noisy on stderr
+
+            if process.stderr:
                 console.print(f"[dim]WhatWeb stderr for {target_url}:\n{process.stderr}[/dim]")
 
         except FileNotFoundError:
