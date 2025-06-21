@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+venv.bak/
+ENV.bak/
+
+# AutoBB specific
+**/config.txt
+**/summary.txt
+**/report.md
+**/recon/*
+**/vulnerabilities/*
+**/fuzzing/*
+**/exploitation/*
+**/screenshots/*
+**/notes/*
+# We want to keep the notes directory itself, but not user_notes.md by default
+# as it contains target-specific information.
+# However, an empty .gitkeep in notes/ might be better if we want to track the dir.
+# For now, let's exclude user_notes.md
+**/notes/user_notes.md
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
