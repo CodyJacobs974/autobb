@@ -86,7 +86,6 @@ AutoBB supports a global YAML configuration file to customize default wordlist p
 *   **Global Configuration:** Allows user to set default tool paths and wordlists.
 
 ## Implemented Capabilities by Stage
-(Brief summary - detailed list omitted for brevity here, but was present in previous README version and should be maintained)
 
 ### 1. Reconnaissance
 Automated scans: Whois, Nmap, Subdomain Enumeration (Amass, Sublist3r, Subfinder), Directory Brute-force (Gobuster, Dirsearch), Wayback/Archive Scan (GAU, Waybackurls), HTTP Probe, Tech Scan (WhatWeb).
@@ -96,7 +95,7 @@ Guidance & tool integration: BAC (ffuf for IDORs), SQLi (sqlmap), XSS (dalfox - 
 
 ### 3. Fuzzing & Automation
 Tools and guidance for discovering vulnerabilities through fuzzing:
-*   **Parameter Fuzzing:** Uses `ffuf` for GET parameters, POST data, and HTTP Headers. Can **suggest URLs with parameters found during reconnaissance** (from Wayback scan) for easier targeting. (Output: `fuzzing/ffuf_parameter_fuzz/`)
+*   **Parameter Fuzzing:** Uses `ffuf` for GET parameters, POST data, and HTTP Headers. Can **suggest URLs with parameters found during reconnaissance** (from Wayback scan) for easier targeting. Users can also select a **payload category (XSS, SQLi, LFI, CMDi, Generic)** to use corresponding default wordlists if configured in `autobb_config.yaml`. (Output: `fuzzing/ffuf_parameter_fuzz/`)
 *   **HTTP Header Fuzzing Guidance:** Detailed advice on which headers to fuzz and what to look for, directing users to the `ffuf` parameter fuzzing option (Header type) for automation.
 *   **Burp Suite Integration Guidance:** Advice on how to effectively use Burp Suite in conjunction with AutoBB's workflow.
 
@@ -105,31 +104,57 @@ SearchSploit integration, PoC building guidance, exploitation tools guidance, ev
 
 ### 5. Generate Bug Bounty Summary Report
 Creates `summary.txt` with findings from Recon (Nmap XML, WhatWeb JSON, DirBuster parsing, etc.) and Vulnerability Analysis (SQLMap logs, Dalfox tags, Nuclei severity counts, Header issues).
+The report now includes more detailed parsed information:
+*   **Nmap:** Open ports, services, and versions from XML.
+*   **Directory Brute-force:** Top interesting paths found with status codes.
+*   **WhatWeb:** Identified technologies and versions from JSON.
+*   **SQLMap:** Identified DBMS, vulnerable parameters, SQLi types, and lists of dumped data files from logs and output directories.
+*   **Dalfox:** Indicates if `[VULN]` or `[POC]` tags were found.
+*   **Nuclei:** Summary of findings by severity from JSONL.
+*   **Headers Analysis:** Summary of key missing/suboptimal headers.
 
 ### 6. View Notes
 Edit `notes/user_notes.md`.
 
 ## Target Folder Structure
-(Detailed structure omitted for brevity here, but was present in previous README version and should be maintained, including paths like `vulnerabilities/security_misconfigurations/nuclei/nuclei_results.jsonl`)
+When you provide a target and a save location, AutoBB will create a folder for that target (e.g., `your_save_location/sanitized_target_name/`). This folder will contain:
 
 ```
 sanitized_target_name/
-├── config.txt
-├── summary.txt
+├── config.txt                # User-entered target, save path, full target path.
+├── summary.txt               # Generated bug bounty summary report.
 ├── recon/
-│   ├── whois/, nmap/, subdomains/, gobuster/, dirsearch/, wayback/, httprobe/, whatweb/
+│   ├── whois/                # whois_results.txt
+│   ├── nmap/                 # nmap_results_*.txt, nmap_results_*.xml
+│   ├── subdomains/           # subdomains_found.txt, amass_output.txt, etc.
+│   ├── gobuster/             # gobuster_results_*.txt (if gobuster used)
+│   ├── dirsearch/            # dirsearch_results_*.txt (if dirsearch used)
+│   ├── wayback/              # archive_urls_unique.txt, archive_urls_raw_*.txt
+│   ├── httprobe/             # live_hosts.txt
+│   └── whatweb/              # whatweb_*.json, whatweb_*.txt
 ├── vulnerabilities/
-│   ├── broken_access_control/, sqli/, xss/, command_injection/, ssrf/, ssti/,
-│   │   open_redirect/, insecure_deserialization/, file_upload/, security_misconfigurations/
-│   │   (within security_misconfigurations: nikto/, nuclei/, headers_analysis/)
+│   ├── broken_access_control/# ffuf_idor_*.txt
+│   ├── sqli/                 # sqlmap_session_<target_details>/ (contains sqlmap logs & data)
+│   ├── xss/                  # dalfox_results_*.txt
+│   ├── command_injection/    # (Primarily guidance, no specific tool output by default)
+│   ├── ssrf/                 # (Primarily guidance)
+│   ├── ssti/                 # (Primarily guidance)
+│   ├── open_redirect/        # (Primarily guidance)
+│   ├── insecure_deserialization/ # (Primarily guidance)
+│   ├── file_upload/          # (Primarily guidance)
+│   └── security_misconfigurations/
+│       ├── nikto/            # nikto_*.txt
+│       ├── nuclei/           # nuclei_results.jsonl, nuclei_results_summary.txt
+│       └── headers_analysis/ # headers_*.txt
 ├── fuzzing/
-│   └── ffuf_parameter_fuzz/
+│   └── ffuf_parameter_fuzz/  # ffuf_param_*.txt, .json, .html etc. (if -of all used)
 ├── exploitation/
-│   ├── searchsploit_results/
+│   ├── searchsploit_results/ # searchsploit_*.txt
+│   ├── xss_pocs/             # Generated HTML PoCs for XSS from Dalfox
 │   └── (User-saved PoCs, etc.)
-├── screenshots/
+├── screenshots/              # (User-managed screenshots)
 └── notes/
-    └── user_notes.md
+    └── user_notes.md         # Custom notes for the target.
 ```
 
 ## Disclaimer

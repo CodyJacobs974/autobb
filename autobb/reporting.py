@@ -428,18 +428,97 @@ console = Console()
                     log_file = os.path.join(sqli_dir, session_dir_name, "log")
                     if os.path.exists(log_file):
                         try:
-                            with open(log_file, 'r', errors='ignore') as f_log:
-                                log_content = f_log.read().lower()
-                            if "critical" in log_content or "high" in log_content or "sql injection vulnerability has been found" in log_content or "identified the following injection point" in log_content:
-                                report_content += "  - [!] Potential SQL injection vulnerabilities indicated by SQLMap log.\n"
-                            elif "does not seem to be injectable" in log_content or "all tested parameters do not appear to be injectable" in log_content:
-                                report_content += "  - SQLMap log indicates target/parameters may not be injectable with current options.\n"
+                            with open(log_file, 'r', encoding='utf-8', errors='ignore') as f_log:
+                                log_lines = f_log.readlines()
+
+                            log_content_lower = "".join(log_lines).lower() # For keyword search
+
+                            # Overall status (existing logic)
+                            if "critical" in log_content_lower or "high" in log_content_lower or "sql injection vulnerability has been found" in log_content_lower or "identified the following injection point" in log_content_lower:
+                                report_content += "  - [!] Status: Potential SQL injection vulnerabilities indicated by SQLMap log.\n"
+                            elif "does not seem to be injectable" in log_content_lower or "all tested parameters do not appear to be injectable" in log_content_lower:
+                                report_content += "  - Status: SQLMap log indicates target/parameters may not be injectable with current options.\n"
                             else:
-                                report_content += "  - SQLMap log summary inconclusive; manual review of session files needed.\n"
-                        except Exception:
-                            report_content += "  - Could not read or parse SQLMap log for a quick summary.\n"
+                                report_content += "  - Status: SQLMap log summary inconclusive; manual review of session files needed.\n"
+
+                            # Extract DBMS
+                            dbms_found = set()
+                            for line in log_lines:
+                                if "back-end DBMS:" in line:
+                                    dbms = line.split("back-end DBMS:", 1)[-1].strip()
+                                    dbms_found.add(dbms)
+                            if dbms_found:
+                                report_content += f"  - Identified DBMS: {', '.join(sorted(list(dbms_found)))}\n"
+
+                            # Extract Injectable Parameters
+                            # Example log line: [INFO] GET parameter 'id' is vulnerable
+                            # Example: [INFO] POST parameter 'search' is vulnerable
+                            # Example: [INFO] Cookie parameter 'user_id' is vulnerable
+                            # Example: User-Agent is vulnerable
+                            injectable_params = set()
+                            param_pattern = re.compile(r"parameter '([^']+)' is vulnerable|(\w[\w-]+(?:\s+HTTP header)?) is vulnerable", re.IGNORECASE)
+                            for line in log_lines:
+                                match = param_pattern.search(line)
+                                if match:
+                                    param_name = match.group(1) or match.group(2)
+                                    param_location = ""
+                                    if "GET parameter" in line: param_location = " (GET)"
+                                    elif "POST parameter" in line: param_location = " (POST)"
+                                    elif "Cookie parameter" in line: param_location = " (Cookie)"
+                                    elif "HTTP header" in line or "User-Agent" in line or "Referer" in line : param_location = " (Header)" # Heuristic
+                                    injectable_params.add(f"{param_name}{param_location}")
+                            if injectable_params:
+                                report_content += f"  - Identified Vulnerable Parameters: {', '.join(sorted(list(injectable_params)))}\n"
+
+                            # Extract SQLi Types
+                            # Example: [INFO] testing 'Boolean-based blind - Parameter replace'
+                            # Example: [INFO] testing 'MySQL >= 5.0 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (FLOOR)'
+                            # Example: [INFO] testing 'PostgreSQL UNION query (NULL) - 1 to 20 columns'
+                            sqli_types_found = set()
+                            type_pattern = re.compile(r"testing '(.+?)'", re.IGNORECASE) # Generic, might need refinement
+                            # More specific patterns could be:
+                            # type_pattern = re.compile(r"testing '(boolean-based blind|error-based|union query|time-based blind|stacked queries)'", re.IGNORECASE)
+                            for line in log_lines:
+                                if " testing '" in line.lower() and "is vulnerable" not in line.lower(): # Avoid param lines
+                                    match = type_pattern.search(line)
+                                    if match:
+                                        # Clean up common technique details for brevity
+                                        type_desc = match.group(1)
+                                        if " - Parameter replace" in type_desc: type_desc = type_desc.split(" - Parameter replace")[0]
+                                        if " - WHERE, HAVING" in type_desc: type_desc = type_desc.split(" - WHERE, HAVING")[0]
+                                        if " columns" in type_desc and "query" in type_desc: type_desc = type_desc.split(" columns")[0] + " columns"
+                                        sqli_types_found.add(type_desc.strip("'"))
+                            if sqli_types_found:
+                                report_content += f"  - Potential SQLi Types/Techniques Tested/Identified: {', '.join(sorted(list(sqli_types_found)))}\n"
+
+                        except Exception as e_log_parse:
+                            report_content += f"  - Could not fully parse SQLMap log for details: {str(e_log_parse)[:100]}\n"
                     else:
                         report_content += "  - SQLMap session log file not found at default path.\n"
+
+                    # Check for dumped data
+                    dump_dir_path = os.path.join(sqli_dir, session_dir_name, "output") # SQLMap output dir often has hostname subdir
+                    # SQLMap's actual dump path is usually <output_dir>/<target_host>/dump/<db_name>/<table_name>.csv
+                    # We'll do a simpler recursive search for .csv files under the session's output directory.
+                    found_dump_files = []
+                    # Need to walk through potential host-named subdirectories in output path.
+                    if os.path.isdir(dump_dir_path): # Check if 'output' subdir exists
+                        for host_subdir_name in os.listdir(dump_dir_path):
+                            host_subdir_full_path = os.path.join(dump_dir_path, host_subdir_name)
+                            if os.path.isdir(host_subdir_full_path):
+                                actual_dump_root = os.path.join(host_subdir_full_path, "dump")
+                                if os.path.isdir(actual_dump_root):
+                                    for root, _, files in os.walk(actual_dump_root):
+                                        for file in files:
+                                            if file.endswith(".csv"):
+                                                # Get relative path from 'dump' onwards
+                                                relative_dump_path = os.path.relpath(os.path.join(root, file), actual_dump_root)
+                                                found_dump_files.append(f"dump/{relative_dump_path}")
+                    if found_dump_files:
+                        report_content += "  - Potential Dumped Data Files (CSV):\n"
+                        for df in found_dump_files:
+                            report_content += f"    - vulnerabilities/sqli/{session_dir_name}/output/{host_subdir_name}/{df}\n" # Path relative to target folder
+
             if not found_sqlmap_sessions:
                  report_content += "- No SQLMap session directories found.\n"
         else:
