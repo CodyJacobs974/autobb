@@ -1,0 +1,57 @@
+# AutoBB Global Configuration Example
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# To use this, copy it to one of the following locations and customize:
+# 1. User-specific (recommended for most users):
+#    - Linux/macOS: ~/.config/autobb/autobb_config.yaml
+#    - Windows: %APPDATA%/autobb/autobb_config.yaml (Note: AutoBB currently checks ~/.config/autobb first, Windows path might need adjustment in config_manager.py if strictly needed)
+# 2. Project root (for development or portable use):
+#    - ./autobb_config.yaml (in the same directory as the main autobb project folder)
+#
+# Paths can be absolute (e.g., /path/to/tool) or use ~ for your home directory (e.g., ~/tools/custom_nmap).
+# If a tool_path is not specified or the path is invalid, AutoBB will try to find the tool in your system's PATH.
+# If a wordlist path is not specified or invalid, AutoBB will prompt without a default or use a hardcoded system fallback if available.
+
+# Custom paths for external tools
+# Useful if tools are not in your system PATH or you want to use specific versions.
+# tool_paths:
+#   nmap: ~/custom_tools/nmap/nmap
+#   sqlmap: /opt/sqlmap/sqlmap.py
+#   nikto: ~/tools/nikto/program/nikto.pl
+#   nuclei: /usr/local/bin/nuclei # Example if installed manually
+#   ffuf: ~/go/bin/ffuf
+#   amass: ~/go/bin/amass
+#   subfinder: ~/go/bin/subfinder
+#   sublist3r: /opt/Sublist3r/sublist3r.py # If cloned from GitHub
+#   gobuster: ~/go/bin/gobuster
+#   dirsearch: /opt/dirsearch/dirsearch.py # If cloned from GitHub
+#   gau: ~/go/bin/gau
+#   waybackurls: ~/go/bin/waybackurls
+#   httprobe: ~/go/bin/httprobe
+#   whatweb: /usr/local/bin/whatweb # Example if installed manually
+#   dalfox: ~/go/bin/dalfox
+#   searchsploit: /usr/bin/searchsploit # Usually in PATH if exploitdb package is installed
+#   whois: /usr/bin/whois # Usually in PATH
+
+# Default wordlist paths for various modules
+# AutoBB will use these as default suggestions in prompts if the files exist.
+# wordlists:
+#   # For Reconnaissance -> Directory Brute-force
+#   directory_bruteforce: ~/SecLists/Discovery/Web-Content/directory-list-2.3-medium.txt
+#
+#   # For Vulnerability Analysis -> Broken Access Control (IDOR Fuzzing with ffuf)
+#   idor_numeric_ids: ~/wordlists/custom_lists/numeric_1-10000.txt
+#
+#   # For Fuzzing & Automation -> Parameter Fuzzing (Generic Payloads)
+#   parameter_fuzzing_generic: ~/SecLists/Fuzzing/general-payloads.txt
+#   # You might want more specific lists for different parameter fuzzing scenarios:
+#   # xss_payloads: ~/SecLists/Fuzzing/XSS/XSS-Jhaddix-Short.txt
+#   # sqli_payloads: ~/SecLists/Fuzzing/SQLi/Generic-SQLi.txt
+#   # lfi_payloads: ~/SecLists/Fuzzing/LFI/LFI-Jhaddix.txt
+
+# Default options for tools (This is an idea for future enhancement; AutoBB does not yet automatically apply these global options)
+# Example:
+# default_tool_options:
+#   nuclei: "-s medium,high,critical -etags \"dos,misc,tech-detect,fuzz\" -rl 20"
+#   ffuf_general: "-timeout 5 -recursion -recursion-depth 2 -rate 50"
+#   nmap_quick_scan: "-T4 -F --min-rate 1000"
+```

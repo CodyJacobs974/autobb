@@ -11,7 +11,8 @@ from autobb import fuzzing
 from autobb import exploitation
 from autobb import reporting
 from autobb import notes_manager
-from autobb import utils # Import the utils module
+from autobb import utils
+from autobb.config_manager import load_global_config, ensure_user_config_dir_exists # Import config funcs
 
 console = Console()
 

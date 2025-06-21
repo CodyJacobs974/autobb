@@ -4,9 +4,24 @@ import subprocess
 import re
 from rich.console import Console
 from rich.prompt import Prompt
-from .utils import read_config
+from .utils import read_config # For target-specific config
+from autobb.config_manager import get_config_value # For global autobb_config.yaml
 
 console = Console()
+
+def _get_tool_path_fuzz(tool_name: str, friendly_name: str = None) -> str:
+    """Helper to get tool path from config or shutil.which for fuzzing module."""
+    if not friendly_name:
+        friendly_name = tool_name.capitalize()
+    configured_path = get_config_value(f"tool_paths.{tool_name.lower()}")
+    if configured_path:
+        expanded_path = os.path.expanduser(configured_path)
+        if os.path.isfile(expanded_path) and os.access(expanded_path, os.X_OK):
+            console.print(f"[dim]Using configured path for {friendly_name}: {expanded_path}[/dim]")
+            return expanded_path
+        else:
+            console.print(f"[yellow]Warning: Configured path for {friendly_name} ('{configured_path}') is invalid. Trying PATH.[/yellow]")
+    return shutil.which(tool_name)
 
 def run_parameter_fuzzing(target_base_path: str):
     console.print("\n[bold #FFD700]--- Parameter Fuzzing with FFuF ---[/bold #FFD700]")
