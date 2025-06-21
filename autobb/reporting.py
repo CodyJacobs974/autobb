@@ -173,21 +173,125 @@ def generate_report(target_base_path: str):
         report_content += "- No WhatWeb scan results found.\n"
     report_content += "\n"
 
-    # 3. Vulnerability Findings (Placeholder - to be populated from vulnerabilities/ files)
-    report_content += "## Vulnerability Findings (Organized by Type)\n"
-    report_content += "*(Details of discovered vulnerabilities, e.g., XSS, SQLi, SSRF, will be listed here)*\n"
-    # Example: Iterate through vulnerabilities folders
-    vuln_dir = os.path.join(target_base_path, "vulnerabilities")
-    if os.path.isdir(vuln_dir):
-        for vuln_type_dir in os.listdir(vuln_dir):
-            vuln_type_path = os.path.join(vuln_dir, vuln_type_dir)
-            if os.path.isdir(vuln_type_path):
-                report_content += f"\n### {vuln_type_dir.upper()} Findings:\n"
-                # List files or summaries from this directory
-                for finding_file in os.listdir(vuln_type_path):
-                     report_content += f"- Evidence: {os.path.join(vuln_type_dir, finding_file)}\n" # Simplified
-    report_content += "\n"
+    # 3. Vulnerability Findings
+    report_content += "## Vulnerability Analysis Findings\n\n"
+    vuln_base_dir = os.path.join(target_base_path, "vulnerabilities")
 
+    if not os.path.isdir(vuln_base_dir):
+        report_content += "- No vulnerability analysis data directory found.\n\n"
+    else:
+        # Broken Access Control (ffuf for IDOR)
+        report_content += "### Broken Access Control / IDOR:\n"
+        bac_dir = os.path.join(vuln_base_dir, "broken_access_control")
+        if os.path.isdir(bac_dir) and any(os.scandir(bac_dir)):
+            found_bac_files = False
+            for f_name in os.listdir(bac_dir):
+                if f_name.startswith("ffuf_idor_") and (f_name.endswith(".txt") or f_name.endswith(".csv")):
+                    report_content += f"- FFuF IDOR results: vulnerabilities/broken_access_control/{f_name}\n"
+                    found_bac_files = True
+            if not found_bac_files:
+                report_content += "- No specific ffuf IDOR output files found. Review directory for other files.\n"
+        else:
+            report_content += "- BAC/IDOR checks (ffuf) not run or no results directory found. Manual testing guidance was provided.\n"
+        report_content += "- Reminder: Review manual testing guidance for other BAC aspects.\n\n"
+
+        # SQL Injection (sqlmap)
+        report_content += "### SQL Injection (SQLMap):\n"
+        sqli_dir = os.path.join(vuln_base_dir, "sqli")
+        if os.path.isdir(sqli_dir) and any(os.scandir(sqli_dir)):
+            found_sqlmap_sessions = False
+            for session_dir_name in os.listdir(sqli_dir):
+                if session_dir_name.startswith("sqlmap_session_"):
+                    found_sqlmap_sessions = True
+                    report_content += f"- SQLMap session data and full results: vulnerabilities/sqli/{session_dir_name}/\n"
+                    log_file = os.path.join(sqli_dir, session_dir_name, "log")
+                    if os.path.exists(log_file):
+                        try:
+                            with open(log_file, 'r', errors='ignore') as f_log:
+                                log_content = f_log.read().lower()
+                            if "critical" in log_content or "high" in log_content or "sql injection vulnerability has been found" in log_content or "identified the following injection point" in log_content:
+                                report_content += "  - [!] Potential SQL injection vulnerabilities indicated by SQLMap log.\n"
+                            elif "does not seem to be injectable" in log_content or "all tested parameters do not appear to be injectable" in log_content:
+                                report_content += "  - SQLMap log indicates target/parameters may not be injectable with current options.\n"
+                            else:
+                                report_content += "  - SQLMap log summary inconclusive; manual review of session files needed.\n"
+                        except Exception:
+                            report_content += "  - Could not read or parse SQLMap log for a quick summary.\n"
+                    else:
+                        report_content += "  - SQLMap session log file not found at default path.\n"
+            if not found_sqlmap_sessions:
+                 report_content += "- No SQLMap session directories found.\n"
+        else:
+            report_content += "- SQLMap scans not run or no results directory found. Manual testing guidance was provided.\n"
+        report_content += "\n"
+
+        # XSS (dalfox)
+        report_content += "### Cross-Site Scripting (XSS - Dalfox):\n"
+        xss_dir = os.path.join(vuln_base_dir, "xss")
+        if os.path.isdir(xss_dir) and any(os.scandir(xss_dir)):
+            found_dalfox_files = False
+            for f_name in os.listdir(xss_dir):
+                if f_name.startswith("dalfox_results_") and f_name.endswith(".txt"):
+                    report_content += f"- Dalfox results: vulnerabilities/xss/{f_name}\n"
+                    found_dalfox_files = True
+                    try:
+                        with open(os.path.join(xss_dir, f_name), 'r', errors='ignore') as f_dalfox:
+                            dalfox_content = f_dalfox.read()
+                        if "[VULN]" in dalfox_content or "[POC]" in dalfox_content:
+                            report_content += "  - [!] Potential XSS vulnerabilities indicated by Dalfox output.\n"
+                        else:
+                            report_content += "  - Dalfox output does not contain explicit [VULN] or [POC] tags. Manual review advised.\n"
+                    except Exception:
+                        report_content += "  - Could not read or parse Dalfox output file for quick summary.\n"
+            if not found_dalfox_files:
+                report_content += "- No Dalfox output files found.\n"
+        else:
+            report_content += "- Dalfox scans not run or no results directory found. Manual testing guidance was provided.\n"
+        report_content += "\n"
+
+        # Security Misconfigurations (Nikto, Nuclei, Headers)
+        report_content += "### Security Misconfigurations:\n"
+        sec_misc_dir = os.path.join(vuln_base_dir, "security_misconfigurations")
+        found_sec_misc_data = False
+        if os.path.isdir(sec_misc_dir):
+            # Nikto
+            nikto_out_dir = os.path.join(sec_misc_dir, "nikto")
+            if os.path.isdir(nikto_out_dir) and any(os.scandir(nikto_out_dir)):
+                report_content += "- Nikto Scan Results:\n"
+                for f_name in os.listdir(nikto_out_dir):
+                    report_content += f"  - vulnerabilities/security_misconfigurations/nikto/{f_name}\n"
+                found_sec_misc_data = True
+            # Nuclei
+            nuclei_out_dir = os.path.join(sec_misc_dir, "nuclei")
+            if os.path.isdir(nuclei_out_dir) and any(os.scandir(nuclei_out_dir)):
+                report_content += "- Nuclei Scan Results:\n"
+                for f_name in os.listdir(nuclei_out_dir):
+                    report_content += f"  - vulnerabilities/security_misconfigurations/nuclei/{f_name}\n"
+                found_sec_misc_data = True
+            # Headers Analysis
+            headers_out_dir = os.path.join(sec_misc_dir, "headers_analysis")
+            if os.path.isdir(headers_out_dir) and any(os.scandir(headers_out_dir)):
+                report_content += "- Security Headers Analysis:\n"
+                for f_name in os.listdir(headers_out_dir):
+                    report_content += f"  - vulnerabilities/security_misconfigurations/headers_analysis/{f_name}\n"
+                    # TODO: Could add summary of missing headers here by parsing the file.
+                found_sec_misc_data = True
+
+        if not found_sec_misc_data:
+            report_content += "- No automated security misconfiguration scan results (Nikto, Nuclei, Headers) found.\n"
+        report_content += "- Reminder: Review manual testing guidance for other misconfigurations.\n\n"
+
+        # Guidance-Only Vulnerabilities
+        guidance_vulns = [
+            "Command Injection", "Server-Side Request Forgery (SSRF)",
+            "Server-Side Template Injection (SSTI)", "Open Redirect",
+            "Insecure Deserialization", "File Upload Vulnerabilities"
+        ]
+        report_content += "### Guidance-Based Vulnerability Checks:\n"
+        report_content += "The following vulnerability categories were primarily checked via detailed manual testing guidance provided by AutoBB:\n"
+        for gv_name in guidance_vulns:
+            report_content += f"- {gv_name}\n"
+        report_content += "Please consult `notes/user_notes.md` and any evidence manually saved in the `exploitation/` directory for findings related to these categories.\n\n"
 
     # 4. Proof of Concept (Placeholder)
     report_content += "## Proof of Concept (PoC)\n"
