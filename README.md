@@ -92,7 +92,7 @@ AutoBB supports a global YAML configuration file to customize default wordlist p
 Automated scans: Whois, Nmap, Subdomain Enumeration (Amass, Sublist3r, Subfinder), Directory Brute-force (Gobuster, Dirsearch), Wayback/Archive Scan (GAU, Waybackurls), HTTP Probe, Tech Scan (WhatWeb).
 
 ### 2. Vulnerability Analysis
-Guidance & tool integration: BAC (ffuf for IDORs - **now with CSV parsing and interactive `curl` PoC generation for interesting results**), SQLi (sqlmap), XSS (dalfox - **now with interactive HTML PoC generation for reported findings**), Command Injection, SSRF, SSTI, Open Redirect, Insecure Deserialization, File Uploads, Security Misconfigs (Nikto, Nuclei, header checks).
+Guidance & tool integration: BAC (ffuf for IDORs - **now with CSV parsing and interactive `curl` PoC generation for interesting results**), SQLi (sqlmap), XSS (dalfox - **now with interactive HTML PoC generation for reported findings**), Command Injection, SSRF (**now with interactive `curl` PoC generation helper for common payloads**), SSTI, Open Redirect, Insecure Deserialization, File Uploads, Security Misconfigs (Nikto, Nuclei, header checks).
 
 ### 3. Fuzzing & Automation
 Tools and guidance for discovering vulnerabilities through fuzzing:
