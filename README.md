@@ -71,10 +71,11 @@ AutoBB supports a global YAML configuration file to customize default wordlist p
 
 2.  **Customize `autobb_config.yaml`:**
     Edit your copied `autobb_config.yaml` to set:
-    *   `tool_paths`: Specify absolute paths (or using `~`) to tools like `nmap`, `sqlmap`, etc.
-    *   `wordlists`: Define default paths for wordlists used by modules like directory brute-forcing or parameter fuzzing (e.g., `wordlists.directory_bruteforce`).
+    *   `tool_paths`: Specify absolute paths (or using `~`) to tools like `nmap`, `sqlmap`, etc., if they are not in your system PATH or you want to use a specific version.
+    *   `wordlists`: Define default paths for various wordlist types (e.g., for directory brute-forcing, specific parameter fuzzing categories like XSS, SQLi).
+    *   `default_tool_options`: Set default command-line options/flags for supported tools (e.g., default `nmap` scan intensity, default `ffuf` rate). These are prepended to commands, and user-prompted options are typically appended.
 
-    Refer to the comments within `autobb_config.yaml.example` for details on available keys and structure (e.g., `tool_paths.nmap`, `wordlists.directory_bruteforce`, `wordlists.parameter_fuzzing_xss`). If the config file is not found or a specific key is missing, AutoBB will use its default behavior.
+    Refer to the comments within `autobb_config.yaml.example` for details on all available keys and structure (e.g., `tool_paths.nmap`, `wordlists.parameter_fuzzing_xss`, `default_tool_options.ffuf`). If the config file is not found or a specific key is missing, AutoBB will use its built-in defaults or prompt the user.
 
 ## Core Features
 
@@ -83,7 +84,7 @@ AutoBB supports a global YAML configuration file to customize default wordlist p
 *   **Tool Integration & Guidance:** Leverages popular tools and provides manual testing advice.
 *   **Note-Taking:** Per-target notes using a terminal editor.
 *   **Dependency Checking:** Warns about missing external tools.
-*   **Global Configuration:** Allows user to set default tool paths and wordlists.
+*   **Global Configuration:** Allows users to set default tool paths, wordlist locations, and default command-line options for integrated tools.
 
 ## Implemented Capabilities by Stage
 

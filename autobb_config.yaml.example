@@ -51,10 +51,23 @@
 #   # Using a common command injection list, but often needs tailoring
 #   parameter_fuzzing_cmdi: ~/SecLists/Fuzzing/Command_Injection/command-injection-commix.txt
 
-# Default options for tools (This is an idea for future enhancement; AutoBB does not yet automatically apply these global options)
-# Example:
-# default_tool_options:
-#   nuclei: "-s medium,high,critical -etags \"dos,misc,tech-detect,fuzz\" -rl 20"
-#   ffuf_general: "-timeout 5 -recursion -recursion-depth 2 -rate 50"
-#   nmap_quick_scan: "-T4 -F --min-rate 1000"
+# Default options for tools
+# These options will be prepended to the command when AutoBB runs the respective tool.
+# User-provided options during prompts will typically be appended after these defaults.
+# Be careful not to specify options here that conflict with AutoBB's core functionality (e.g., output flags managed by AutoBB).
+default_tool_options:
+  nmap: "-T4 --min-rate 1000 --max-retries 2"             # General Nmap options, applied before scan-type specific ones
+  # nmap_quick_scan: "-F"  # Example: if we wanted specific options per nmap scan type (more complex)
+  ffuf: "-timeout 5 -recursion -recursion-depth 1 -rate 75" # General ffuf options
+  sqlmap: "--level=2 --risk=1 --threads=5"                 # Default safety/speed for sqlmap
+  nuclei: "-s medium,high,critical -etags \"dos,fuzz\" -rl 30" # Default templates/severity for Nuclei
+  nikto: "-Tuning 45678ab"                                  # Example Nikto tuning options (less common to set globally)
+  gobuster: "-t 50 --no-error"                             # Default threads for gobuster dir
+  dirsearch: "--threads=25 --exclude-status=400,404,500-599" # Default threads and common excludes for dirsearch
+  # dalfox: "--skip-bav --skip-mining-dom"                  # Example: skip certain dalfox checks by default
+  # whatweb: "-a 1"                                         # Example: default aggression for whatweb
+  # amass: "enum -passive -timeout 10" # Note: amass subcommands make this tricky, better to set per-tool call if needed
+  # subfinder: "-silent"
+  # gau: "--threads 5"
+  # httprobe: "-c 50 -t 3000" # concurrency 50, timeout 3s (in ms for httprobe)
 ```
