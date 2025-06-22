@@ -1,0 +1,73 @@
+# AutoBB Global Configuration Example
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# To use this, copy it to one of the following locations and customize:
+# 1. User-specific (recommended for most users):
+#    - Linux/macOS: ~/.config/autobb/autobb_config.yaml
+#    - Windows: %APPDATA%/autobb/autobb_config.yaml (Note: AutoBB currently checks ~/.config/autobb first, Windows path might need adjustment in config_manager.py if strictly needed)
+# 2. Project root (for development or portable use):
+#    - ./autobb_config.yaml (in the same directory as the main autobb project folder)
+#
+# Paths can be absolute (e.g., /path/to/tool) or use ~ for your home directory (e.g., ~/tools/custom_nmap).
+# If a tool_path is not specified or the path is invalid, AutoBB will try to find the tool in your system's PATH.
+# If a wordlist path is not specified or invalid, AutoBB will prompt without a default or use a hardcoded system fallback if available.
+
+# Custom paths for external tools
+# Useful if tools are not in your system PATH or you want to use specific versions.
+# tool_paths:
+#   nmap: ~/custom_tools/nmap/nmap
+#   sqlmap: /opt/sqlmap/sqlmap.py
+#   nikto: ~/tools/nikto/program/nikto.pl
+#   nuclei: /usr/local/bin/nuclei # Example if installed manually
+#   ffuf: ~/go/bin/ffuf
+#   amass: ~/go/bin/amass
+#   subfinder: ~/go/bin/subfinder
+#   sublist3r: /opt/Sublist3r/sublist3r.py # If cloned from GitHub
+#   gobuster: ~/go/bin/gobuster
+#   dirsearch: /opt/dirsearch/dirsearch.py # If cloned from GitHub
+#   gau: ~/go/bin/gau
+#   waybackurls: ~/go/bin/waybackurls
+#   httprobe: ~/go/bin/httprobe
+#   whatweb: /usr/local/bin/whatweb # Example if installed manually
+#   dalfox: ~/go/bin/dalfox
+#   searchsploit: /usr/bin/searchsploit # Usually in PATH if exploitdb package is installed
+#   whois: /usr/bin/whois # Usually in PATH
+
+# Default wordlist paths for various modules
+# AutoBB will use these as default suggestions in prompts if the files exist.
+# wordlists:
+#   # For Reconnaissance -> Directory Brute-force
+#   directory_bruteforce: ~/SecLists/Discovery/Web-Content/directory-list-2.3-medium.txt
+#
+#   # For Vulnerability Analysis -> Broken Access Control (IDOR Fuzzing with ffuf)
+#   idor_numeric_ids: ~/wordlists/custom_lists/numeric_1-10000.txt
+#
+#   # For Fuzzing & Automation -> Parameter Fuzzing
+#   # Generic fallback payload list for parameter fuzzing
+#   parameter_fuzzing_generic: ~/SecLists/Fuzzing/Polyglots/Payloads_from_all_files.txt
+#   # Specific payload lists for different attack types during parameter fuzzing:
+#   parameter_fuzzing_xss: ~/SecLists/Fuzzing/XSS/XSS-Polyglots-XSSHunter.txt
+#   parameter_fuzzing_sqli: ~/SecLists/Fuzzing/SQLi/Generic-SQLi.txt
+#   parameter_fuzzing_lfi: ~/SecLists/Fuzzing/LFI/LFI-gracefulsecurity-linux.txt
+#   # Using a common command injection list, but often needs tailoring
+#   parameter_fuzzing_cmdi: ~/SecLists/Fuzzing/Command_Injection/command-injection-commix.txt
+
+# Default options for tools
+# These options will be prepended to the command when AutoBB runs the respective tool.
+# User-provided options during prompts will typically be appended after these defaults.
+# Be careful not to specify options here that conflict with AutoBB's core functionality (e.g., output flags managed by AutoBB).
+default_tool_options:
+  nmap: "-T4 --min-rate 1000 --max-retries 2"             # General Nmap options, applied before scan-type specific ones
+  # nmap_quick_scan: "-F"  # Example: if we wanted specific options per nmap scan type (more complex)
+  ffuf: "-timeout 5 -recursion -recursion-depth 1 -rate 75" # General ffuf options
+  sqlmap: "--level=2 --risk=1 --threads=5"                 # Default safety/speed for sqlmap
+  nuclei: "-s medium,high,critical -etags \"dos,fuzz\" -rl 30" # Default templates/severity for Nuclei
+  nikto: "-Tuning 45678ab"                                  # Example Nikto tuning options (less common to set globally)
+  gobuster: "-t 50 --no-error"                             # Default threads for gobuster dir
+  dirsearch: "--threads=25 --exclude-status=400,404,500-599" # Default threads and common excludes for dirsearch
+  # dalfox: "--skip-bav --skip-mining-dom"                  # Example: skip certain dalfox checks by default
+  # whatweb: "-a 1"                                         # Example: default aggression for whatweb
+  # amass: "enum -passive -timeout 10" # Note: amass subcommands make this tricky, better to set per-tool call if needed
+  # subfinder: "-silent"
+  # gau: "--threads 5"
+  # httprobe: "-c 50 -t 3000" # concurrency 50, timeout 3s (in ms for httprobe)
+```
