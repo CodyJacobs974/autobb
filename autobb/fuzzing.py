@@ -2,12 +2,68 @@ import os
 import shutil
 import subprocess
 import re
+import tempfile # For fallback wordlist
 from rich.console import Console
 from rich.prompt import Prompt
 from .utils import read_config # For target-specific config
 from autobb.config_manager import get_config_value # For global autobb_config.yaml
 
 console = Console()
+
+DEFAULT_FALLBACK_PAYLOADS = [
+    # Common words & special characters
+    "test", "admin", "user", "pass", "FUZZ", "null", "true", "false", "1", "0", "-1",
+    "'", "\"", "<", ">", ";", "|", "&", "$", "(", ")", "{", "}", "[", "]", "`", "\\",
+    # Basic XSS
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "'\"><svg/onload=alert(1)>",
+    # Basic SQLi
+    "' OR '1'='1",
+    "' OR 1=1 --",
+    "admin'--",
+    # Basic LFI/Path Traversal
+    "../../../../etc/passwd",
+    "..\\..\\..\\..\\windows\\win.ini",
+    # Basic CMDi (very simple, often needs context)
+    ";id",
+    "|id",
+    "&id", # Windows
+    # Basic SSTI-like probes
+    "{{7*7}}",
+    "${7*7}",
+    # Common parameters often found in logs or default configs
+    "id", "user_id", "username", "password", "filename", "file", "page", "redirect", "url", "next", "cmd", "exec"
+]
+
+DEFAULT_FALLBACK_FUZZ_PAYLOADS = [
+    # Common words & tests
+    "test", "admin", "user", "pass", "password", "login", "key", "id", "FUZZ", "null",
+    "../../../../../../../../etc/passwd",
+    "../../../../../../../../windows/win.ini",
+    "file:///etc/passwd",
+    "file:///c:/windows/win.ini",
+    # Basic SQLi
+    "'", "\"", "`", "')", "\")", "`)", "OR 1=1 --", "OR '1'='1", "' OR 1=1 --",
+    "admin'--", "admin' OR '1'='1",
+    # Basic XSS
+    "<script>alert('XSS')</script>",
+    "<img src=x onerror=alert('XSS')>",
+    "javascript:alert('XSS')",
+    "\"><svg/onload=alert(1)>",
+    # Basic CMDi
+    "|id", ";id", "&&id",
+    "|whoami", ";whoami",
+    "& dir", "& ipconfig",
+    # Basic SSTI
+    "{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}",
+    # Basic Path Traversal / Other
+    "..%2F..%2Fetc%2Fpasswd",
+    "%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+    "WEB-INF/web.xml",
+    # Common backup/config files (often found via dir busting but can be params too)
+    ".env", ".git/config", "config.json", "settings.py"
+]
 
 def _get_tool_path_fuzz(tool_name: str, friendly_name: str = None) -> str:
     """Helper to get tool path from config or shutil.which for fuzzing module."""
@@ -139,16 +195,67 @@ def run_parameter_fuzzing(target_base_path: str):
             console.print(f"[dim]Specific wordlist for '{selected_payload_category_name}' not found/configured. Using generic fuzzing wordlist: {effective_default_fuzz_wl}[/dim]")
 
     payload_wordlist_str = Prompt.ask(
-        f"Enter path to payload wordlist for '{selected_payload_category_name.upper()}' fuzzing",
-        default=effective_default_fuzz_wl
+        f"Enter path to payload wordlist for '{selected_payload_category_name.upper()}' fuzzing (or press Enter for basic fallback)",
+        default=effective_default_fuzz_wl if effective_default_fuzz_wl else "" # Ensure default is "" if None for Prompt
     )
-    if not payload_wordlist_str or not os.path.exists(os.path.expanduser(payload_wordlist_str)):
-        console.print(f"[red]Payload wordlist not found at '{payload_wordlist_str}'. Skipping.[/red]")
+
+    payload_wordlist_to_use = None
+    temp_payload_file_obj = None # To hold the tempfile object for later cleanup
+    using_temp_wordlist = False
+
+    if payload_wordlist_str: # User provided a path
+        expanded_user_path = os.path.expanduser(payload_wordlist_str)
+        if os.path.exists(expanded_user_path):
+            payload_wordlist_to_use = expanded_user_path
+        else:
+            console.print(f"[red]User-provided wordlist not found at '{expanded_user_path}'. Skipping.[/red]")
+            return
+    elif effective_default_fuzz_wl: # User pressed Enter, but a configured default was found and used by Prompt
+        # This case means effective_default_fuzz_wl was used by Prompt as it was not empty.
+        # Prompt.ask returns the default if user input is empty.
+        # So, if payload_wordlist_str IS effective_default_fuzz_wl, it means user accepted default.
+        if payload_wordlist_str == effective_default_fuzz_wl : # Actually, Prompt returns the default if input is empty
+             payload_wordlist_to_use = effective_default_fuzz_wl
+             console.print(f"[dim]Using configured default wordlist: {payload_wordlist_to_use}[/dim]")
+        # This logic branch might be tricky if Prompt.ask default="" when effective_default_fuzz_wl is None
+        # Corrected logic: if payload_wordlist_str is EMPTY and effective_default_fuzz_wl was also None, THEN use fallback.
+        # If payload_wordlist_str is NOT empty, it's either user input or the passed default.
+        # The Prompt.ask default behavior needs to be handled carefully.
+        # Let's simplify: if payload_wordlist_str (after prompt) is effectively empty, and no valid default was used.
+        # Re-evaluating the condition for fallback:
+        # Fallback is used if:
+        # 1. User presses Enter (payload_wordlist_str is empty from Prompt if default was also empty).
+        # 2. AND effective_default_fuzz_wl was None (meaning no valid config path was found to offer as default).
+
+        # Simpler logic:
+        # payload_wordlist_str will be the value from Prompt.ask.
+        # If it's empty, it means user pressed Enter AND the default passed to Prompt.ask was also empty/None.
+        if not payload_wordlist_str: # This implies effective_default_fuzz_wl was None or empty
+            console.print("[yellow]Warning: No wordlist path provided and no valid default configured. Using a small built-in basic payload list.[/yellow]")
+            console.print("[yellow]For comprehensive fuzzing, it is strongly recommended to provide a dedicated wordlist path or configure defaults in autobb_config.yaml.[/yellow]")
+            try:
+                temp_payload_file_obj = tempfile.NamedTemporaryFile(mode='w+', delete=False, encoding='utf-8', suffix=".txt")
+                for payload in DEFAULT_FALLBACK_PAYLOADS:
+                    temp_payload_file_obj.write(payload + '\n')
+                temp_payload_file_obj.close()
+                payload_wordlist_to_use = temp_payload_file_obj.name
+                using_temp_wordlist = True
+                console.print(f"[dim]Using temporary fallback wordlist: {payload_wordlist_to_use}[/dim]")
+            except Exception as e_temp:
+                console.print(f"[red]Error creating temporary fallback wordlist: {e_temp}. Skipping fuzzing.[/red]")
+                return
+        else: # User provided a path, or a valid default from config was accepted
+            payload_wordlist_to_use = os.path.expanduser(payload_wordlist_str)
+            if not os.path.exists(payload_wordlist_to_use): # Should be caught by initial check if user provided, but double check if default was bad
+                 console.print(f"[red]Wordlist path '{payload_wordlist_to_use}' does not exist. Skipping fuzzing.[/red]")
+                 return
+
+    if not payload_wordlist_to_use: # Should not happen if logic above is correct, but as a safeguard
+        console.print("[red]Wordlist determination failed. Skipping fuzzing.[/red]")
         return
-    payload_wordlist = os.path.expanduser(payload_wordlist_str)
     # --- End of Payload Type and Wordlist Selection ---
 
-    ffuf_command = ["ffuf", "-w", f"{payload_wordlist}:FUZZ"]
+    ffuf_command = [ffuf_path, "-w", f"{payload_wordlist_to_use}:FUZZ"]
     fuzz_description = selected_payload_category_name # Use category for filename
 
     if fuzz_type_choice == "1": # GET Parameter

@@ -95,7 +95,11 @@ Guidance & tool integration: BAC (ffuf for IDORs - **now with CSV parsing and in
 
 ### 3. Fuzzing & Automation
 Tools and guidance for discovering vulnerabilities through fuzzing:
-*   **Parameter Fuzzing:** Uses `ffuf` for GET parameters, POST data, and HTTP Headers. Can **suggest URLs with parameters found during reconnaissance** (from Wayback scan) for easier targeting. Users can also select a **payload category (XSS, SQLi, LFI, CMDi, Generic)** to use corresponding default wordlists if configured in `autobb_config.yaml`. (Output: `fuzzing/ffuf_parameter_fuzz/`)
+*   **Parameter Fuzzing:** Uses `ffuf` for GET parameters, POST data, and HTTP Headers.
+    *   Can **suggest URLs with parameters found during reconnaissance** (from Wayback scan) for easier targeting.
+    *   Users can select a **payload category (XSS, SQLi, LFI, CMDi, Generic, Custom)** to use corresponding default wordlists if configured in `autobb_config.yaml`.
+    *   If no wordlist is provided or configured, a **small, built-in generic fallback list** is used with a warning (providing a proper wordlist is highly recommended).
+    *   (Output: `fuzzing/ffuf_parameter_fuzz/`)
 *   **HTTP Header Fuzzing Guidance:** Detailed advice on which headers to fuzz and what to look for, directing users to the `ffuf` parameter fuzzing option (Header type) for automation.
 *   **Burp Suite Integration Guidance:** Advice on how to effectively use Burp Suite in conjunction with AutoBB's workflow.
 
