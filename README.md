@@ -49,13 +49,19 @@ Once installed, you can run AutoBugBounty from your terminal:
 autobb
 ```
 
-This will launch the interactive menu.
+Upon starting, AutoBB will:
+1.  Perform a check for essential external tool dependencies and warn you if any core tools are missing.
+2.  Prompt you to enter the target IP address or domain name.
+3.  Ask for a location on your filesystem where the target's data folder will be saved.
+
+After these initial setup steps, the main interactive menu will be launched.
 
 **Development Usage:**
 If you have cloned the repository and installed in editable mode (`pip install -e .`) or just want to run from the source without full installation, you can use:
 ```bash
 python3 autobb/main.py
 ```
+This will also follow the same dependency check and initial target setup procedure before displaying the main menu.
 (Ensure `autobb/main.py` is executable if running as `./autobb/main.py`).
 
 ## Global Configuration (Optional)
@@ -122,7 +128,9 @@ The report now includes more detailed parsed information:
 Edit `notes/user_notes.md`.
 
 ## Target Folder Structure
-When you provide a target and a save location, AutoBB will create a folder for that target (e.g., `your_save_location/sanitized_target_name/`). This folder will contain:
+When you provide a target and a save location, AutoBB will create an initial folder structure for that target (e.g., `your_save_location/sanitized_target_name/`). Key top-level directories like `recon/`, `vulnerabilities/`, `notes/`, etc., are created immediately. The more detailed subdirectories shown below (e.g., `recon/nmap/`, `vulnerabilities/sqli/`) are typically created by individual tools within AutoBB as they are run and save their specific outputs.
+
+The comprehensive structure, after various tools have been used, will look like this:
 
 ```
 sanitized_target_name/
