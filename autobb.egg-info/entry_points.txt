@@ -1,2 +1,0 @@
-[console_scripts]
-autobb = autobb.main:main

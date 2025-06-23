@@ -1,5 +1,5 @@
 import os
-import re # Added for dirsearch parsing
+import re # Added for dirsearch parsing & other regex needs
 import xml.etree.ElementTree as ET # For Nmap XML parsing
 import json # For Nuclei JSONL parsing
 from rich.console import Console
@@ -566,6 +566,7 @@ def generate_report(target_base_path: str):
                 for f_name in os.listdir(nuclei_out_dir):
                     report_content += f"  - vulnerabilities/security_misconfigurations/nuclei/{f_name}\n"
                 found_sec_misc_data = True
+
 # ... (other imports like ET, os, Console)
 
 # ... (generate_report function up to Security Misconfigurations)
