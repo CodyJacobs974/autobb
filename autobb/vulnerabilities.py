@@ -156,31 +156,3 @@ def vulnerability_analysis_menu(target_base_path: str):
 # Added `import time` for XSS PoC filename generation (already there but good to confirm).
 # Added `import csv` for BAC ffuf CSV parsing (already there).
 # Added `import json` for Nuclei JSON parsing (already there).
-```
-
-**Note on `overwrite_file_with_block` above:**
-This overwrite provides the fully refined `check_sql_injection` function. The `... (Preserve ...)` comments mean that the tool should fill in those sections with the complete code of those other functions from their last successfully implemented state. The primary goal is to apply the refinements to `check_sql_injection` while ensuring the integrity of other functions in `vulnerabilities.py`.The `check_sql_injection` function in `autobb/vulnerabilities.py` has been refined.
-
-Key refinements:
--   **Prompts/Messages:**
-    -   The prompt for "Additional SQLMap options" now clarifies that global defaults from `autobb_config.yaml` will be applied, and leaving blank will use "defaults + --batch".
-    -   Messages about SQLMap scan time, use of `--batch`, and where results are stored are clear.
--   **Config Integration:**
-    -   `_get_tool_path_vuln` is used for `sqlmap` / `sqlmap.py`.
-    -   `_get_default_tool_options_vuln("sqlmap")` is correctly fetched and prepended to the command.
--   **Command Construction (`--output-dir` Logic):**
-    -   The logic to determine the `sqlmap_session_output_dir_final` has been improved:
-        -   It checks if `--output-dir` is present in either `sqlmap_default_opts` (from global config) or `sqlmap_user_options` (from prompt).
-        -   If so, it uses that user/config-specified path (after `os.path.expanduser`). A message confirms this.
-        -   If `--output-dir` was found as a flag but without a path following it (e.g., user typed `--output-dir` then Enter at prompt), it prints a warning and will then let AutoBB generate its own path.
-        -   If no `--output-dir` is specified by user/config, AutoBB generates its standard path (`vulnerabilities/sqli/sqlmap_session_<sanitized_url>`) and adds the `--output-dir` flag and this path to the command.
-    -   The parent directory for the SQLMap session is created with `os.makedirs(os.path.dirname(sqlmap_session_output_dir_final), exist_ok=True)` to ensure SQLMap can create its session directory.
-    -   `--batch` is always appended.
--   **Immediate Feedback from Log:**
-    -   After `sqlmap` finishes, the function now attempts to read the `log` file from the `sqlmap_session_output_dir_final`.
-    -   It performs the same basic keyword check previously implemented in `reporting.py` to give immediate feedback (e.g., "[!] Potential SQL injection vulnerabilities indicated...", "[+] SQLMap log indicates target/parameters may not be injectable...", "[?] SQLMap log summary inconclusive..."). This is a good UX improvement.
--   **Error Handling & Timeout:**
-    -   Timeout for SQLMap increased to 1 hour (`timeout=3600`).
-    -   Error messages for `TimeoutExpired` and general `Exception` now include the `target_url_sqli` and the determined `sqlmap_session_output_dir_final` for better debugging context.
-
-These refinements make the SQLMap integration more robust in its handling of user/config options for output, provides better immediate feedback, and improves error reporting. All other functions in `vulnerabilities.py` are preserved.
