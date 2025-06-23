@@ -6,7 +6,7 @@ AutoBugBounty (AutoBB) is a command-line toolkit designed to assist bug bounty h
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://https://github.com/CodyJacobs974/autobb
+    git clone https://github.com/CodyJacobs974/autobb
     cd autobb
     ```
 
