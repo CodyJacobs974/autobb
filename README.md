@@ -14,9 +14,8 @@ AutoBugBounty (AutoBB) is a command-line toolkit designed to assist bug bounty h
     It's recommended to use a Python virtual environment.
     ```bash
     python3 -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    pip install .
-    # Or for development: pip install -e .
+    source venv/bin/activate  
+    pip install 
     ```
     This will install `rich`, `requests`, `PyYAML`, and other Python libraries listed in `requirements.txt` and register the `autobb` command.
 
@@ -35,9 +34,6 @@ AutoBugBounty (AutoBB) is a command-line toolkit designed to assist bug bounty h
     ```bash
     sudo apt update
     sudo apt install whois nmap sqlmap nikto ffuf amass gobuster httprobe whatweb exploitdb nano vim -y
-    # For Nuclei, Dalfox, Subfinder, GAU, Waybackurls - follow their official installation guides (often via Go or releases)
-    # e.g., go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
-    # pip install sublist3r PyYAML
     ```
     Refer to the `AGENTS.md` file for more specific dependency details and the `autobb/utils.py` for the list of checked tools.
 
