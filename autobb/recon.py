@@ -30,8 +30,6 @@ def _get_default_tool_options(tool_name: str) -> list:
 
 def run_whois(target_base_path: str):
     console.print("\n[cyan]Starting Whois scan...[/cyan]")
-    # ... (no changes to whois as it typically doesn't have many default options users would set globally) ...
-    # (Keeping existing whois implementation)
     config = read_config(target_base_path)
     if not config or "TARGET_IDENTIFIER" not in config:
         console.print("[red]Could not retrieve target identifier from config.[/red]"); return
@@ -67,14 +65,13 @@ def run_nmap(target_base_path: str):
     default_nmap_opts = _get_default_tool_options("nmap")
 
     scan_options_map = {
-        "1": {"name": "Quick Scan", "args": ["-T4", "-F"]}, # -T4 is already a default, but explicit here
+        "1": {"name": "Quick Scan", "args": ["-T4", "-F"]},
         "2": {"name": "Basic TCP Full Port Scan", "args": ["-p-"]},
         "3": {"name": "Service Version Detection Scan", "args": ["-sV"]},
-        "4": {"name": "Custom Scan", "args": []} # User provides all args
+        "4": {"name": "Custom Scan", "args": []}
     }
     console.print("\n[bold]Select Nmap Scan Type:[/bold]")
     for key, val in scan_options_map.items():
-        # Preview command with potential default options, then scan-specific, then target
         preview_cmd_parts = [tool_path] + default_nmap_opts + val['args'] + [target_identifier] if val['args'] else [tool_path] + default_nmap_opts + ["[custom_flags]"] + [target_identifier]
         console.print(f"  [magenta][{key}][/magenta] {val['name']}" + (f" ([dim]{' '.join(preview_cmd_parts)}[/dim])" if val['name'] != "Custom Scan" else ""))
 
@@ -82,10 +79,10 @@ def run_nmap(target_base_path: str):
     selected_scan_info = scan_options_map[choice]
 
     nmap_scan_specific_args = selected_scan_info["args"]
-    if choice == "4": # Custom Scan
+    if choice == "4":
         custom_flags_str = Prompt.ask("Enter ALL custom Nmap flags (e.g., -sS -A -O). Global defaults will NOT be applied for custom scan.")
         nmap_scan_specific_args = custom_flags_str.split()
-        final_nmap_args = nmap_scan_specific_args # User takes full control for custom
+        final_nmap_args = nmap_scan_specific_args
     else:
         final_nmap_args = default_nmap_opts + nmap_scan_specific_args
 
@@ -93,11 +90,9 @@ def run_nmap(target_base_path: str):
     xml_out = os.path.join(output_dir, f"nmap_results_{slug}.xml")
     txt_out = os.path.join(output_dir, f"nmap_results_{slug}.txt")
 
-    # Core flags like target and output are always appended last for clarity and precedence
     nmap_cmd = [tool_path] + final_nmap_args + [target_identifier, "-oX", xml_out, "-oN", txt_out]
 
     console.print(f"\nRunning Nmap: [blue]{' '.join(nmap_cmd)}[/blue]")
-    # ... (rest of Nmap execution logic unchanged)
     try:
         process = subprocess.run(nmap_cmd, capture_output=True, text=True, check=False, timeout=3600)
         if process.stdout: console.print(f"[dim]Nmap stdout:\n{process.stdout[:1000].strip()}...[/dim]")
@@ -110,13 +105,11 @@ def run_nmap(target_base_path: str):
 
 
 def run_subdomain_enum(target_base_path: str):
-    # ... (Subdomain enumeration usually doesn't have many global default CLI options users would set,
-    # specific options like -d <domain> -o <file> are handled per tool.
-    # If specific tools like amass had common advanced config (e.g. API keys for services),
-    # that would be a more advanced config feature beyond simple default_tool_options string.
-    # For now, keeping this as is, _get_tool_path will still work.)
     console.print("\n[cyan]Starting Subdomain Enumeration...[/cyan]")
-    # (Keep existing subdomain enum implementation using _get_tool_path)
+    # Actual implementation for subdomain enumeration tools (amass, subfinder, sublist3r)
+    # This is a placeholder; specific tool logic would go here.
+    console.print("[dim]Subdomain enumeration logic would execute here (e.g., calling amass, subfinder).[/dim]")
+    Prompt.ask("Press Enter to simulate completion...")
 
 
 def run_dir_bruteforce(target_base_path: str):
@@ -124,70 +117,81 @@ def run_dir_bruteforce(target_base_path: str):
     config = read_config(target_base_path)
     if not config or "TARGET_IDENTIFIER" not in config: console.print("[red]No target in config.[/red]"); return
     target_identifier = config["TARGET_IDENTIFIER"]
-    urls_to_scan = [] # ... (URL construction as before)
+    urls_to_scan = []
     if not target_identifier.startswith(("http://", "https://")):
-        urls_to_scan.extend([f"http://{target_identifier}", f"https://{target_identifier}"])
+        protocol_choice = Prompt.ask(f"Target '{target_identifier}' has no protocol. Scan HTTP, HTTPS, or both?", choices=["http", "https", "both"], default="both")
+        if protocol_choice == "http": urls_to_scan.append(f"http://{target_identifier}")
+        elif protocol_choice == "https": urls_to_scan.append(f"https://{target_identifier}")
+        else: urls_to_scan.extend([f"http://{target_identifier}", f"https://{target_identifier}"])
     else: urls_to_scan.append(target_identifier)
 
-    default_wl = get_config_value("wordlists.directory_bruteforce") # ... (wordlist path logic as before)
-    # ... (wordlist prompt and validation as before)
-    wordlist_path = Prompt.ask("Enter path to wordlist...", default=...) # Simplified
+    wordlist_path_config = get_config_value("wordlists.directory_bruteforce")
+    wordlist_path = Prompt.ask("Enter path to wordlist for directory brute-force", default=os.path.expanduser(wordlist_path_config) if wordlist_path_config else "")
 
-    tool_used, tool_path, cmd_template_args_only, specific_output_dir = None, None, [], None
-    dir_tools_map = {"gobuster": ["dir", "-u", "{URL}", "-w", "{WORDLIST}", "-o", "{OUTPUT_FILE}", "-k"], # removed --no-error for now
-                 "dirsearch": ["-u", "{URL}", "-w", "{WORDLIST}", "--output={OUTPUT_FILE}"]}
+    if not wordlist_path or not os.path.exists(wordlist_path):
+        console.print(f"[red]Wordlist not found at '{wordlist_path}' or not provided. Skipping directory brute-force.[/red]")
+        return
 
-    for name, args_template in dir_tools_map.items():
-        path = _get_tool_path(name) or (name == "dirsearch" and _get_tool_path("dirsearch.py"))
-        if path:
-            tool_used, tool_path, cmd_template_args_only = name.replace(".py",""), path, args_template
-            specific_output_dir = os.path.join(target_base_path, "recon", tool_used)
-            console.print(f"Using {tool_used.capitalize()} (path: {tool_path}).")
-            break
-    if not tool_used: console.print("[yellow]Neither Gobuster nor Dirsearch found/configured. Skipping.[/yellow]"); return
+    tool_used_name, tool_path, cmd_template_args_only, specific_output_dir = None, None, [], None
+    dir_tools_map = {
+        "gobuster": ["dir", "-u", "{URL}", "-w", "{WORDLIST}", "-o", "{OUTPUT_FILE}", "-k", "--no-error"],
+        "dirsearch": ["-u", "{URL}", "-w", "{WORDLIST}", "--output={OUTPUT_FILE}", "--force-recursive"] # Example, adjust as needed
+    }
+
+    available_tools = {name: _get_tool_path(name) for name in dir_tools_map if _get_tool_path(name)}
+    if not available_tools:
+        console.print("[yellow]Neither Gobuster nor Dirsearch found/configured. Skipping directory brute-force.[/yellow]"); return
+
+    tool_choice = Prompt.ask("Choose tool for directory brute-force", choices=list(available_tools.keys()), default=list(available_tools.keys())[0])
+    tool_used_name = tool_choice
+    tool_path = available_tools[tool_used_name]
+    cmd_template_args_only = dir_tools_map[tool_used_name]
+    specific_output_dir = os.path.join(target_base_path, "recon", tool_used_name)
+    console.print(f"Using {tool_used_name.capitalize()} (path: {tool_path}).")
     os.makedirs(specific_output_dir, exist_ok=True)
 
-    default_opts_for_tool = _get_default_tool_options(tool_used)
+    default_opts_for_tool = _get_default_tool_options(tool_used_name)
 
     for base_url in urls_to_scan:
-        console.print(f"\nScanning URL: [blue]{base_url}[/blue] with {tool_used}")
+        console.print(f"\nScanning URL: [blue]{base_url}[/blue] with {tool_used_name}")
         s_fn = base_url.replace("http://", "").replace("https://", "").replace("/", "_").replace(":", "_")
-        out_fp = os.path.join(specific_output_dir, f"{tool_used}_results_{s_fn}.txt")
+        out_fp = os.path.join(specific_output_dir, f"{tool_used_name}_results_{s_fn}.txt")
 
-        # Construct command: tool_path + default_opts + specific_args_filled_in
         current_cmd_specific_args = [arg.replace("{URL}", base_url).replace("{WORDLIST}", wordlist_path).replace("{OUTPUT_FILE}", out_fp) for arg in cmd_template_args_only]
         cmd = [tool_path] + default_opts_for_tool + current_cmd_specific_args
 
         console.print(f"Running: [dim]{' '.join(cmd)}[/dim]")
-        # ... (rest of subprocess.run and output handling)
         try:
             process = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=3600)
-            # ... (output handling)
-        except Exception as e: console.print(f"[red]Error with {tool_used} for {base_url}: {e}[/red]")
+            # Basic output handling, can be expanded
+            if process.stdout: console.print(f"[dim]Output (first 500 chars):\n{process.stdout[:500]}[/dim]")
+            if process.stderr: console.print(f"[yellow]Stderr:\n{process.stderr[:500]}[/yellow]")
+            console.print(f"[green]Scan for {base_url} complete. Results (if any) in {out_fp}[/green]")
+        except Exception as e: console.print(f"[red]Error with {tool_used_name} for {base_url}: {e}[/red]")
 
 
 def run_archive_scan(target_base_path: str):
-    # ... (Similar to subdomain_enum, these tools (gau, waybackurls) usually have simple commands.
-    # _get_tool_path will work. Default options might be less common here but could be added if needed.)
     console.print("\n[cyan]Starting Wayback/Archive URL Scan...[/cyan]")
-    # (Keep existing archive scan implementation using _get_tool_path)
+    console.print("[dim]Archive scan logic (gau, waybackurls) would execute here.[/dim]")
+    Prompt.ask("Press Enter to simulate completion...")
+
 
 def run_httprobe(target_base_path: str):
-    # ... (_get_tool_path for httprobe. Default options could be added for -c, -t)
     console.print("\n[cyan]Starting HTTP Probe (httprobe)...[/cyan]")
     tool_path = _get_tool_path("httprobe")
     if not tool_path: console.print("[yellow]httprobe not found/configured. Skipping.[/yellow]"); return
     default_opts = _get_default_tool_options("httprobe")
-    # ... (rest of httprobe logic, incorporating default_opts into the command: [tool_path] + default_opts + specific_args)
+    console.print(f"[dim]httprobe logic with tool path '{tool_path}' and defaults '{' '.join(default_opts)}' would run here.[/dim]")
+    Prompt.ask("Press Enter to simulate completion...")
 
 
 def run_tech_scan(target_base_path: str):
-    # ... (_get_tool_path for whatweb. Default options for whatweb (e.g. -a aggression) can be added.)
     console.print("\n[cyan]Starting Technology Stack Scan (WhatWeb)...[/cyan]")
     tool_path = _get_tool_path("whatweb", "WhatWeb")
     if not tool_path: console.print("[yellow]WhatWeb not found/configured. Skipping.[/yellow]"); return
     default_opts = _get_default_tool_options("whatweb")
-    # ... (rest of whatweb logic, incorporating default_opts: [tool_path] + default_opts + specific_args_like_url_and_logjson)
+    console.print(f"[dim]WhatWeb logic with tool path '{tool_path}' and defaults '{' '.join(default_opts)}' would run here.[/dim]")
+    Prompt.ask("Press Enter to simulate completion...")
 
 
 def reconnaissance_menu(target_base_path: str):
@@ -229,12 +233,10 @@ def reconnaissance_menu(target_base_path: str):
             run_whois(target_base_path)
             run_nmap(target_base_path)
             run_subdomain_enum(target_base_path)
-            # Potentially run_httprobe before dir_bruteforce and tech_scan if they depend on live hosts
-            # For now, keeping order simple. User can run selectively.
-            run_httprobe(target_base_path) # Good to run early to identify live http/s services
-            run_dir_bruteforce(target_base_path) # Needs live http/s services
-            run_archive_scan(target_base_path)   # Operates on domain, not specific live hosts
-            run_tech_scan(target_base_path)      # Needs live http/s services
+            run_httprobe(target_base_path)
+            run_dir_bruteforce(target_base_path)
+            run_archive_scan(target_base_path)
+            run_tech_scan(target_base_path)
             console.print("\n[blue]All reconnaissance scans initiated.[/blue]")
         elif choice == "9":
             break
