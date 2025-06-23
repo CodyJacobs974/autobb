@@ -146,9 +146,114 @@ def check_sql_injection(target_base_path: str):
 def check_xss(target_base_path: str):
     console.print("\n[bold #D2691E]--- Testing for Cross-Site Scripting (XSS) ---[/bold #D2691E]") # Full logic here
 # ... and so on for all other functions in this file.
+
+# Placeholder for check_command_injection - assume it exists or will be added
+def check_command_injection(target_base_path: str):
+    console.print("\n[bold #FFA500]--- Guidance for Command Injection Testing ---[/bold #FFA500]")
+    console.print("Command Injection guidance would be displayed here.")
+    # In a full version, this would offer detailed manual testing steps or integrate tools.
+    # For now, it's a placeholder to match menu options.
+    Prompt.ask("Press Enter to continue...")
+
+
+# Placeholder for check_ssrf - assume it exists or will be added
+def check_ssrf(target_base_path: str):
+    console.print("\n[bold #FF4500]--- Guidance for SSRF Testing ---[/bold #FF4500]")
+    console.print("SSRF testing guidance would be displayed here.")
+    Prompt.ask("Press Enter to continue...")
+
+# Placeholder for check_ssti - assume it exists or will be added
+def check_ssti(target_base_path: str):
+    console.print("\n[bold #FF6347]--- Guidance for SSTI Testing ---[/bold #FF6347]")
+    console.print("SSTI testing guidance would be displayed here.")
+    Prompt.ask("Press Enter to continue...")
+
+# Placeholder for check_open_redirect - assume it exists or will be added
+def check_open_redirect(target_base_path: str):
+    console.print("\n[bold #FF7F50]--- Guidance for Open Redirect Testing ---[/bold #FF7F50]")
+    console.print("Open Redirect testing guidance would be displayed here.")
+    Prompt.ask("Press Enter to continue...")
+
+# Placeholder for check_insecure_deserialization - assume it exists or will be added
+def check_insecure_deserialization(target_base_path: str):
+    console.print("\n[bold #DC143C]--- Guidance for Insecure Deserialization Testing ---[/bold #DC143C]")
+    console.print("Insecure Deserialization testing guidance would be displayed here.")
+    Prompt.ask("Press Enter to continue...")
+
+# Placeholder for check_file_upload_vulns - assume it exists or will be added
+def check_file_upload_vulns(target_base_path: str):
+    console.print("\n[bold #B22222]--- Guidance for File Upload Vulnerabilities Testing ---[/bold #B22222]")
+    console.print("File Upload Vulnerabilities testing guidance would be displayed here.")
+    Prompt.ask("Press Enter to continue...")
+
+# Placeholder for check_security_misconfigurations - assume it exists or will be added
+def check_security_misconfigurations(target_base_path: str):
+    console.print("\n[bold #8A2BE2]--- Testing for Security Misconfigurations (Nikto, Nuclei, Headers) ---[/bold #8A2BE2]")
+    console.print("Security Misconfigurations checks (Nikto, Nuclei, Headers) would be run here.")
+    # In a full version, this would call _run_nikto, _run_nuclei, _analyze_headers
+    Prompt.ask("Press Enter to continue...")
+
+
 def vulnerability_analysis_menu(target_base_path: str):
-    # ... (Full menu logic as before) ...
-    pass
+    """Displays the vulnerability analysis menu and handles user choices."""
+    while True:
+        console.print("\n[bold blue]--- Vulnerability Analysis Menu ---[/bold blue]")
+        vuln_options = {
+            "1": "Broken Access Control (BAC)",
+            "2": "SQL Injection (SQLMap)",
+            "3": "Cross-Site Scripting (XSS - Dalfox)",
+            "4": "Command Injection (Guidance)",
+            "5": "Server-Side Request Forgery (SSRF - Guidance)",
+            "6": "Server-Side Template Injection (SSTI - Guidance)",
+            "7": "Open Redirect (Guidance)",
+            "8": "Insecure Deserialization (Guidance)",
+            "9": "File Upload Vulnerabilities (Guidance)",
+            "10": "Security Misconfigurations (Nikto, Nuclei, Headers)",
+            "11": "Run All Vulnerability Checks/Guidance",
+            "12": "Back to Main Menu"
+        }
+        for key, value in vuln_options.items():
+            console.print(f"[magenta][{key}][/magenta] {value}")
+
+        choice = Prompt.ask("Select a vulnerability analysis task", choices=list(vuln_options.keys()), default="12")
+
+        if choice == "1":
+            check_broken_access_control(target_base_path)
+        elif choice == "2":
+            check_sql_injection(target_base_path)
+        elif choice == "3":
+            check_xss(target_base_path)
+        elif choice == "4":
+            check_command_injection(target_base_path)
+        elif choice == "5":
+            check_ssrf(target_base_path)
+        elif choice == "6":
+            check_ssti(target_base_path)
+        elif choice == "7":
+            check_open_redirect(target_base_path)
+        elif choice == "8":
+            check_insecure_deserialization(target_base_path)
+        elif choice == "9":
+            check_file_upload_vulns(target_base_path)
+        elif choice == "10":
+            check_security_misconfigurations(target_base_path)
+        elif choice == "11":
+            console.print("\n[blue]Running all vulnerability checks/guidance prompts...[/blue]")
+            check_broken_access_control(target_base_path)
+            check_sql_injection(target_base_path)
+            check_xss(target_base_path)
+            check_command_injection(target_base_path)
+            check_ssrf(target_base_path)
+            check_ssti(target_base_path)
+            check_open_redirect(target_base_path)
+            check_insecure_deserialization(target_base_path)
+            check_file_upload_vulns(target_base_path)
+            check_security_misconfigurations(target_base_path)
+            console.print("\n[blue]All vulnerability analysis checks/guidance prompts initiated.[/blue]")
+        elif choice == "12":
+            break
+        else:
+            console.print("[red]Invalid option selected.[/red]")
 
 # This overwrite provides the refined check_sql_injection.
 # Other functions are placeholders for their last correct, complete state.

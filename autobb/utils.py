@@ -1,3 +1,4 @@
+import os # Import the os module
 import shutil
 from rich.console import Console
 

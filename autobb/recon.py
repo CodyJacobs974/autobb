@@ -191,5 +191,52 @@ def run_tech_scan(target_base_path: str):
 
 
 def reconnaissance_menu(target_base_path: str):
-    # ... (Menu structure unchanged)
-    pass
+    """Displays the reconnaissance menu and handles user choices."""
+    while True:
+        console.print("\n[bold blue]--- Reconnaissance Menu ---[/bold blue]")
+        recon_options = {
+            "1": "Whois Scan",
+            "2": "Nmap Scan",
+            "3": "Subdomain Enumeration",
+            "4": "Directory Brute-force",
+            "5": "Wayback/Archive Scan",
+            "6": "HTTP Probe (Live Hosts)",
+            "7": "Technology Scan (WhatWeb)",
+            "8": "Run All Recon Scans",
+            "9": "Back to Main Menu"
+        }
+        for key, value in recon_options.items():
+            console.print(f"[magenta][{key}][/magenta] {value}")
+
+        choice = Prompt.ask("Select a recon task", choices=list(recon_options.keys()), default="9")
+
+        if choice == "1":
+            run_whois(target_base_path)
+        elif choice == "2":
+            run_nmap(target_base_path)
+        elif choice == "3":
+            run_subdomain_enum(target_base_path)
+        elif choice == "4":
+            run_dir_bruteforce(target_base_path)
+        elif choice == "5":
+            run_archive_scan(target_base_path)
+        elif choice == "6":
+            run_httprobe(target_base_path)
+        elif choice == "7":
+            run_tech_scan(target_base_path)
+        elif choice == "8":
+            console.print("\n[blue]Running all reconnaissance scans...[/blue]")
+            run_whois(target_base_path)
+            run_nmap(target_base_path)
+            run_subdomain_enum(target_base_path)
+            # Potentially run_httprobe before dir_bruteforce and tech_scan if they depend on live hosts
+            # For now, keeping order simple. User can run selectively.
+            run_httprobe(target_base_path) # Good to run early to identify live http/s services
+            run_dir_bruteforce(target_base_path) # Needs live http/s services
+            run_archive_scan(target_base_path)   # Operates on domain, not specific live hosts
+            run_tech_scan(target_base_path)      # Needs live http/s services
+            console.print("\n[blue]All reconnaissance scans initiated.[/blue]")
+        elif choice == "9":
+            break
+        else:
+            console.print("[red]Invalid option selected.[/red]")
