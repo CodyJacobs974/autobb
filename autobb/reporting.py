@@ -1,4 +1,7 @@
 import os
+import re # Added for dirsearch parsing
+import xml.etree.ElementTree as ET # For Nmap XML parsing
+import json # For Nuclei JSONL parsing
 from rich.console import Console
 from .utils import read_config # Import from utils
 
@@ -67,11 +70,6 @@ def generate_report(target_base_path: str):
     else:
         report_content += "- No Whois data found.\n"
     report_content += "\n"
-
-import xml.etree.ElementTree as ET # For Nmap XML parsing
-
-console = Console()
-# ... (rest of the file up to Nmap section) ...
 
     # Nmap Scans
     report_content += "### Nmap Scans:\n"
@@ -568,8 +566,6 @@ console = Console()
                 for f_name in os.listdir(nuclei_out_dir):
                     report_content += f"  - vulnerabilities/security_misconfigurations/nuclei/{f_name}\n"
                 found_sec_misc_data = True
-import json # For Nuclei JSONL parsing
-
 # ... (other imports like ET, os, Console)
 
 # ... (generate_report function up to Security Misconfigurations)

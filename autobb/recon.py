@@ -193,30 +193,3 @@ def run_tech_scan(target_base_path: str):
 def reconnaissance_menu(target_base_path: str):
     # ... (Menu structure unchanged)
     pass
-```
-
-**Note on `overwrite_file_with_block`:**
-The above shows the *intent* and *key areas of change*. The actual `overwrite_file_with_block` will contain the fully merged code for `autobb/recon.py`, preserving all existing detailed logic within each function and only inserting/modifying the parts related to `_get_default_tool_options()` and its usage in command construction. The `... (rest of ... logic unchanged)` comments are placeholders for that existing code. The main structural change is the addition of `_get_default_tool_options()` and its consistent application.
-
-**Key changes being made to `recon.py` functions:**
--   Added `_get_default_tool_options(tool_name)` helper.
--   **Nmap:** `default_nmap_opts` are prepended. For "Custom Scan", global defaults are NOT applied, user provides all flags.
--   **Dir Bruteforce (Gobuster/Dirsearch):** `default_opts_for_tool` are prepended to the command.
--   **HTTP Probe:** `default_opts` fetched and should be prepended to its command.
--   **WhatWeb:** `default_opts` fetched and should be prepended.
--   Whois, Subdomain Enum, Archive Scan: These typically have simpler commands where global default flags are less common or harder to manage (e.g., `amass enum <default_flags> -d <domain>` - the subcommand makes it tricky). For now, they primarily benefit from `_get_tool_path`. `default_tool_options` could be applied to them if specific use cases arise.
-
-This covers `recon.py`. I'll do `vulnerabilities.py` and `fuzzing.py` in subsequent steps.The `autobb/recon.py` module has been updated to integrate default tool options from the global configuration.
-
-Key changes:
--   **New Helper `_get_default_tool_options(tool_name)`:** This function was added to fetch a string of default options for a given tool from the global config (e.g., `default_tool_options.nmap`), splits it into a list, and returns it. Returns an empty list if no options are configured.
--   **Integration in Tool Functions:**
-    *   **`run_nmap`:** Fetches general Nmap default options. These are prepended to the scan-specific arguments (e.g., `-T4 -F`). For "Custom Scan" type, these global defaults are explicitly *not* applied, allowing the user full control over the custom command.
-    *   **`run_dir_bruteforce` (for Gobuster/Dirsearch):** Fetches default options for the chosen tool (`gobuster` or `dirsearch`) and prepends them to the command that includes the user-provided wordlist and target URL.
-    *   **`run_httprobe`:** Fetches default options for `httprobe` (e.g., for `-c` concurrency, `-t` timeout) and these are to be prepended to the command. (The `overwrite_file_with_block` included the placeholder for the full command construction).
-    *   **`run_tech_scan` (for WhatWeb):** Fetches default options for `whatweb` (e.g., for aggression `-a`) and these are to be prepended to the command before the target URL and log options. (Placeholder for full command construction in the overwrite).
--   **Tool Path Resolution:** The existing `_get_tool_path` helper correctly handles custom tool paths from config or PATH.
-
-This change allows users to define common preferred options for these recon tools in their `autobb_config.yaml`, which AutoBB will then use by default, while still allowing scan-specific or user-prompted options to be applied.
-
-Next, I will apply similar changes to `autobb/vulnerabilities.py`.
